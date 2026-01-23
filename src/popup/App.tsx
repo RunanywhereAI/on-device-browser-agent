@@ -9,6 +9,7 @@ import { TaskInput } from './components/TaskInput';
 import { ProgressDisplay } from './components/ProgressDisplay';
 import { ModelStatus } from './components/ModelStatus';
 import { ResultView } from './components/ResultView';
+import { TaskHistory } from './components/TaskHistory';
 import { POPUP_PORT_NAME } from '../shared/constants';
 import type { ExecutorEvent } from '../shared/types';
 
@@ -26,6 +27,7 @@ export interface Step {
 }
 
 type AppState = 'idle' | 'loading' | 'planning' | 'executing' | 'paused' | 'complete' | 'error';
+type AppTab = 'task' | 'history';
 
 interface ObstacleInfo {
   type: string;
@@ -39,6 +41,7 @@ interface ObstacleInfo {
 export function App(): React.ReactElement {
   // Application state
   const [state, setState] = useState<AppState>('idle');
+  const [activeTab, setActiveTab] = useState<AppTab>('task');
   const [modelProgress, setModelProgress] = useState(0);
   const [plan, setPlan] = useState<string[]>([]);
   const [steps, setSteps] = useState<Step[]>([]);
@@ -328,8 +331,27 @@ export function App(): React.ReactElement {
         <p>AI Web Automation (On-Device)</p>
       </header>
 
+      {/* Tab Navigation (only show when idle) */}
+      {state === 'idle' && (
+        <div className="tabs">
+          <button
+            className={`tab ${activeTab === 'task' ? 'active' : ''}`}
+            onClick={() => setActiveTab('task')}
+          >
+            New Task
+          </button>
+          <button
+            className={`tab ${activeTab === 'history' ? 'active' : ''}`}
+            onClick={() => setActiveTab('history')}
+          >
+            History
+          </button>
+        </div>
+      )}
+
       <main className="main">
-        {state === 'idle' && <TaskInput onSubmit={handleSubmitTask} />}
+        {state === 'idle' && activeTab === 'task' && <TaskInput onSubmit={handleSubmitTask} />}
+        {state === 'idle' && activeTab === 'history' && <TaskHistory />}
 
         {state === 'loading' && (
           <>

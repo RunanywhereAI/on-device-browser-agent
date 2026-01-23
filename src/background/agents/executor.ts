@@ -17,6 +17,7 @@ import { siteRouter } from './site-router';
 import { changeObserver } from './change-observer';
 import { detectObstacle, getObstacleMessage, type DetectedObstacle } from './obstacle-detector';
 import { llmEngine } from '../llm-engine';
+import { taskLogger } from '../task-logger';
 import type {
   AgentContext,
   DOMState,
@@ -83,6 +84,9 @@ export class Executor {
     siteRouter.initialize(task);
     console.log(`[Executor] Site router initialized, can handle: ${siteRouter.canHandle(task, '')}`)
 
+    // Start task logging
+    taskLogger.startTask(task, modelId || 'default', false);
+
     try {
       // Phase 1: Initialize LLM
       this.emit({ type: 'INIT_START' });
@@ -133,6 +137,7 @@ export class Executor {
         try {
           this.context.plan = await this.planner.createPlan(task);
           this.llmCallsRemaining--; // Count this LLM call
+          taskLogger.recordLLMCall();
 
           // Validate plan structure
           const steps = this.context.plan?.plan?.steps;
@@ -168,10 +173,12 @@ export class Executor {
 
       for (let step = 0; step < MAX_STEPS; step++) {
         if (this.shouldCancel) {
+          taskLogger.cancelTask();
           throw new Error('Task cancelled by user');
         }
 
         this.emit({ type: 'STEP_START', stepNumber: step + 1 });
+        taskLogger.recordStep();
 
         // Get current DOM state
         let domState: DOMState;
@@ -305,6 +312,7 @@ export class Executor {
         if (!action && this.llmCallsRemaining > 0) {
           try {
             this.llmCallsRemaining--;
+            taskLogger.recordLLMCall();
             console.log(`[Executor] LLM fallback (${this.llmCallsRemaining} calls remaining)`);
             action = await this.navigator.getNextAction(this.context!, domState);
             actionSource = 'LLM';
@@ -316,6 +324,7 @@ export class Executor {
             if (replans < MAX_REPLANS && this.llmCallsRemaining > 0) {
               replans++;
               this.llmCallsRemaining--;
+              taskLogger.recordLLMCall();
               this.emit({ type: 'REPLAN', reason: `Navigator error: ${errorMsg}` });
               this.navigator.reset();
               this.context!.plan = await this.planner.replan(this.context!, errorMsg);
@@ -383,6 +392,7 @@ export class Executor {
         // Handle terminal actions
         if (action.action.action_type === 'done') {
           const result = action.action.parameters.result || 'Task completed successfully';
+          await taskLogger.endTaskSuccess(result);
           this.emit({ type: 'TASK_COMPLETE', result });
           return result;
         }
@@ -393,6 +403,7 @@ export class Executor {
           // Try replanning
           if (replans < MAX_REPLANS) {
             replans++;
+            taskLogger.recordLLMCall();
             this.emit({ type: 'REPLAN', reason });
             this.navigator.reset();
             this.context.plan = await this.planner.replan(this.context, reason);
@@ -401,6 +412,7 @@ export class Executor {
             continue;
           }
 
+          await taskLogger.endTaskFailure(reason);
           this.emit({ type: 'TASK_FAILED', error: reason });
           throw new Error(reason);
         }
@@ -456,8 +468,14 @@ export class Executor {
 
       // Max steps exceeded
       const error = `Maximum steps (${MAX_STEPS}) exceeded without completing task`;
+      await taskLogger.endTaskFailure(error);
       this.emit({ type: 'TASK_FAILED', error });
       throw new Error(error);
+    } catch (error) {
+      // Catch any unhandled errors and log them
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      await taskLogger.endTaskFailure(errorMsg);
+      throw error;
     } finally {
       this.isRunning = false;
       this.reset();

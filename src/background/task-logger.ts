@@ -1,0 +1,170 @@
+/**
+ * Task Logger
+ *
+ * Logs task execution to storage for history and analytics.
+ */
+
+import { addTaskToHistory, type TaskHistoryEntry } from '../shared/storage';
+
+// ============================================================================
+// Types
+// ============================================================================
+
+interface TaskLogData {
+  description: string;
+  modelId: string;
+  visionMode: boolean;
+  startTime: number;
+  endTime?: number;
+  steps: number;
+  llmCalls: number;
+  success: boolean;
+  result?: string;
+  error?: string;
+}
+
+// ============================================================================
+// Task Logger
+// ============================================================================
+
+export class TaskLogger {
+  private currentTask: TaskLogData | null = null;
+  private stepCount: number = 0;
+  private llmCallCount: number = 0;
+
+  /**
+   * Start logging a new task
+   */
+  startTask(description: string, modelId: string, visionMode: boolean): void {
+    this.currentTask = {
+      description,
+      modelId,
+      visionMode,
+      startTime: Date.now(),
+      steps: 0,
+      llmCalls: 0,
+      success: false,
+    };
+
+    this.stepCount = 0;
+    this.llmCallCount = 0;
+
+    console.log('[TaskLogger] Started logging task:', description);
+  }
+
+  /**
+   * Record a step execution
+   */
+  recordStep(): void {
+    if (this.currentTask) {
+      this.stepCount++;
+      this.currentTask.steps = this.stepCount;
+    }
+  }
+
+  /**
+   * Record an LLM call
+   */
+  recordLLMCall(): void {
+    if (this.currentTask) {
+      this.llmCallCount++;
+      this.currentTask.llmCalls = this.llmCallCount;
+    }
+  }
+
+  /**
+   * End the task with success
+   */
+  async endTaskSuccess(result: string): Promise<void> {
+    if (!this.currentTask) {
+      console.warn('[TaskLogger] No active task to end');
+      return;
+    }
+
+    this.currentTask.endTime = Date.now();
+    this.currentTask.success = true;
+    this.currentTask.result = result;
+
+    await this.saveTask();
+  }
+
+  /**
+   * End the task with failure
+   */
+  async endTaskFailure(error: string): Promise<void> {
+    if (!this.currentTask) {
+      console.warn('[TaskLogger] No active task to end');
+      return;
+    }
+
+    this.currentTask.endTime = Date.now();
+    this.currentTask.success = false;
+    this.currentTask.error = error;
+
+    await this.saveTask();
+  }
+
+  /**
+   * Cancel the current task (don't save to history)
+   */
+  cancelTask(): void {
+    if (this.currentTask) {
+      console.log('[TaskLogger] Cancelled task:', this.currentTask.description);
+      this.currentTask = null;
+      this.stepCount = 0;
+      this.llmCallCount = 0;
+    }
+  }
+
+  /**
+   * Get the current task data (for debugging)
+   */
+  getCurrentTask(): TaskLogData | null {
+    return this.currentTask;
+  }
+
+  /**
+   * Save the task to history
+   */
+  private async saveTask(): Promise<void> {
+    if (!this.currentTask) return;
+
+    const duration = this.currentTask.endTime
+      ? this.currentTask.endTime - this.currentTask.startTime
+      : 0;
+
+    const historyEntry: Omit<TaskHistoryEntry, 'id'> = {
+      description: this.currentTask.description,
+      modelId: this.currentTask.modelId,
+      visionMode: this.currentTask.visionMode,
+      steps: this.currentTask.steps,
+      llmCalls: this.currentTask.llmCalls,
+      duration,
+      success: this.currentTask.success,
+      result: this.currentTask.result,
+      error: this.currentTask.error,
+      timestamp: this.currentTask.startTime,
+    };
+
+    try {
+      await addTaskToHistory(historyEntry);
+      console.log('[TaskLogger] Saved task to history:', {
+        description: historyEntry.description,
+        duration: `${duration}ms`,
+        steps: historyEntry.steps,
+        llmCalls: historyEntry.llmCalls,
+        success: historyEntry.success,
+      });
+    } catch (error) {
+      console.error('[TaskLogger] Failed to save task to history:', error);
+    }
+
+    // Reset state
+    this.currentTask = null;
+    this.stepCount = 0;
+    this.llmCallCount = 0;
+  }
+}
+
+// Export singleton instance
+export const taskLogger = new TaskLogger();

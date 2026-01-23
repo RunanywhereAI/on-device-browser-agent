@@ -434,3 +434,16 @@ chrome.runtime.onInstalled.addListener((details) => {
 });
 
 console.log('[Background] Service worker started');
+
+// ============================================================================
+// Side Panel Handler
+// ============================================================================
+
+// Open side panel when extension icon is clicked
+chrome.action.onClicked.addListener((tab) => {
+  if (tab.id) {
+    chrome.sidePanel.open({ tabId: tab.id }).catch((error) => {
+      console.error('[Background] Failed to open side panel:', error);
+    });
+  }
+});
