@@ -158,9 +158,22 @@ async function getDOMState(tabId: number): Promise<DOMState> {
           };
         }
 
-        // Not restricted but content script not ready - wait and retry
-        if (attempt < maxRetries - 1) {
-          console.log(`[Background] Content script not ready, retrying (${attempt + 1}/${maxRetries})...`);
+        // Not restricted but content script not ready - try to inject it
+        console.log(`[Background] Content script not ready on attempt ${attempt + 1}, attempting re-injection...`);
+        const injected = await injectContentScriptIfNeeded(tabId);
+
+        if (injected) {
+          console.log('[Background] Content script injected, waiting for ready...');
+          await sleep(500); // Give it time to initialize
+          const nowReady = await waitForContentScript(tabId, 1000);
+
+          if (!nowReady && attempt < maxRetries - 1) {
+            console.log('[Background] Still not ready after injection, retrying...');
+            await sleep(retryDelay);
+            continue;
+          }
+        } else if (attempt < maxRetries - 1) {
+          console.log(`[Background] Could not inject content script, retrying (${attempt + 1}/${maxRetries})...`);
           await sleep(retryDelay);
           continue;
         }
@@ -192,21 +205,38 @@ async function getDOMState(tabId: number): Promise<DOMState> {
     }
   }
 
-  // All retries failed - return error state with actual tab info
+  // All retries failed - return error state with detailed guidance
   try {
     const tab = await chrome.tabs.get(tabId);
+    const url = tab.url || 'unknown';
+
+    // Provide specific guidance based on context
+    let errorMessage = '⚠️ CONTENT SCRIPT ERROR\n\n';
+    errorMessage += 'Could not communicate with the page after multiple attempts.\n\n';
+    errorMessage += 'This usually happens when:\n';
+    errorMessage += '• The page is still loading or refreshing\n';
+    errorMessage += '• The page blocked the extension\n';
+    errorMessage += '• The page navigation destroyed the content script\n';
+    errorMessage += '• The page uses strict Content Security Policy\n\n';
+    errorMessage += 'What to try:\n';
+    errorMessage += '✓ Refresh the page and try again\n';
+    errorMessage += '✓ Make sure you\'re on a normal website (not chrome:// pages)\n';
+    errorMessage += '✓ Try navigating to a different page first\n';
+    errorMessage += '✓ Check if the site allows extensions\n\n';
+    errorMessage += `Current URL: ${url}`;
+
     return {
-      url: tab.url || 'unknown',
+      url,
       title: tab.title || 'Error loading page',
       interactiveElements: [],
-      pageText: 'ERROR: Could not communicate with page. The page may still be loading or may have blocked the extension.',
+      pageText: errorMessage,
     };
   } catch {
     return {
       url: 'unknown',
-      title: 'Error loading page state',
+      title: 'Communication Error',
       interactiveElements: [],
-      pageText: '',
+      pageText: '⚠️ FATAL ERROR: Could not communicate with the tab. The tab may have been closed.',
     };
   }
 }
@@ -329,6 +359,48 @@ async function ensureContentScriptLoaded(tabId: number): Promise<boolean> {
   }
 
   return isReady;
+}
+
+/**
+ * Inject content script if it's not already loaded
+ * Returns true if injection succeeded or script was already present
+ */
+async function injectContentScriptIfNeeded(tabId: number): Promise<boolean> {
+  try {
+    // First check if it's already loaded
+    const alreadyLoaded = await waitForContentScript(tabId, 100);
+    if (alreadyLoaded) {
+      return true;
+    }
+
+    // Get tab info to check if injection is possible
+    const tab = await chrome.tabs.get(tabId);
+    const url = tab.url || '';
+
+    // Cannot inject into restricted pages
+    if (url.startsWith('chrome://') ||
+        url.startsWith('chrome-extension://') ||
+        url.startsWith('about:') ||
+        url === 'chrome://newtab/' ||
+        url === '') {
+      console.log('[Background] Cannot inject into restricted page:', url);
+      return false;
+    }
+
+    console.log('[Background] Injecting content script into tab', tabId);
+
+    // Inject the content script (use the loader file from manifest)
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files: ['assets/index.ts-loader-DvRpSkcy.js'], // Content script loader
+    });
+
+    console.log('[Background] Content script injected successfully');
+    return true;
+  } catch (error) {
+    console.error('[Background] Failed to inject content script:', error);
+    return false;
+  }
 }
 
 function waitForTabLoad(tabId: number): Promise<void> {

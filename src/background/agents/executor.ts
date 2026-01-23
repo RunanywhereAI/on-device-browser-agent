@@ -337,9 +337,30 @@ export class Executor {
           }
         }
 
-        // 4. No action available - fail
+        // 4. No action available - fail with helpful message
         if (!action) {
-          const error = 'No applicable action found (state machine, rules, and LLM exhausted)';
+          const pageInfo = `Current page: ${domState.title || 'Unknown'} (${domState.url})`;
+          const elementInfo = `Found ${domState.interactiveElements.length} interactive elements`;
+
+          let error = '⚠️ COULD NOT DETERMINE NEXT ACTION\n\n';
+          error += 'The agent couldn\'t figure out what to do next. This usually happens when:\n\n';
+          error += '• The page structure is unexpected or has changed\n';
+          error += '• The page requires login or verification (CAPTCHA)\n';
+          error += '• The content is dynamically loaded and not yet visible\n';
+          error += '• The task is not achievable on the current page\n\n';
+          error += 'What to try:\n';
+          error += '✓ Refresh the page and try again\n';
+          error += '✓ Enable Vision Mode for better understanding\n';
+          error += '✓ Check if you\'re logged in to the site\n';
+          error += '✓ Make sure you\'re on the correct page\n';
+          error += '✓ Try a simpler or more specific task description\n\n';
+          error += 'Debug Information:\n';
+          error += `• ${pageInfo}\n`;
+          error += `• ${elementInfo}\n`;
+          error += `• State machines checked: ${machineResult ? 'matched but no action' : 'no match'}\n`;
+          error += `• Rules checked: ${action ? 'matched' : 'no match'}\n`;
+          error += '• LLM reasoning: Exhausted or failed to generate valid action\n';
+
           this.emit({ type: 'TASK_FAILED', error });
           throw new Error(error);
         }
