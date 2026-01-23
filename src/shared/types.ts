@@ -211,7 +211,7 @@ export type ExecutorEvent =
   | { type: 'PLAN_START' }
   | { type: 'PLAN_COMPLETE'; plan: string[] }
   | { type: 'STEP_START'; stepNumber: number }
-  | { type: 'STEP_ACTION'; action: string; params: Record<string, string> }
+  | { type: 'STEP_ACTION'; action: string; params: Record<string, string>; reasoning?: string; stateDetected?: string; confidence?: number }
   | { type: 'STEP_RESULT'; success: boolean; data?: string }
   | { type: 'SCREENSHOT_CAPTURED' }
   | { type: 'VISION_ANALYSIS_COMPLETE' }

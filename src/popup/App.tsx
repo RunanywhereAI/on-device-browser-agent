@@ -24,6 +24,11 @@ export interface Step {
   status: 'pending' | 'running' | 'success' | 'failed';
   result?: string;
   error?: string;
+  // Agent reasoning fields (Phase 1.3)
+  reasoning?: string;        // Why this action was chosen
+  stateDetected?: string;    // Which state machine matched
+  alternatives?: string[];   // Other options considered
+  confidence?: number;       // Confidence level (0-1)
 }
 
 type AppState = 'idle' | 'loading' | 'planning' | 'executing' | 'paused' | 'complete' | 'error';
@@ -177,6 +182,10 @@ export function App(): React.ReactElement {
           if (last) {
             last.action = event.action;
             last.params = event.params;
+            // Phase 1.3: Capture agent reasoning
+            last.reasoning = event.reasoning;
+            last.stateDetected = event.stateDetected;
+            last.confidence = event.confidence;
           }
           return updated;
         });

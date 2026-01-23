@@ -61,6 +61,30 @@ export function ProgressDisplay({
                   </div>
                 )}
 
+                {/* Phase 1.3: Show agent reasoning */}
+                {step.reasoning && (
+                  <div className="step-reasoning">
+                    <strong>Reasoning:</strong> {step.reasoning}
+                  </div>
+                )}
+
+                {step.stateDetected && (
+                  <div className="step-source">
+                    <span className="source-badge">
+                      {step.stateDetected.includes('state machine') ? '🤖 State Machine' :
+                       step.stateDetected.includes('rule') ? '📋 Rule Engine' :
+                       step.stateDetected.includes('Vision') ? '👁 Vision Mode' :
+                       '🧠 LLM'}
+                    </span>
+                    {step.stateDetected}
+                    {step.confidence !== undefined && (
+                      <span className="confidence">
+                        {' '}• Confidence: {Math.round(step.confidence * 100)}%
+                      </span>
+                    )}
+                  </div>
+                )}
+
                 {step.result && (
                   <div className="step-result">✓ {step.result}</div>
                 )}

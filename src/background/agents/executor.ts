@@ -406,10 +406,15 @@ export class Executor {
           sameActionCount = 1;
         }
 
+        // Emit action with reasoning (Phase 1.3)
         this.emit({
           type: 'STEP_ACTION',
           action: action.action.action_type,
           params: action.action.parameters,
+          reasoning: action.action.thought || `Action selected via ${actionSource}`,
+          stateDetected: actionSource,
+          confidence: actionSource.includes('state machine') ? 0.95 :
+                     actionSource.includes('rule') ? 0.8 : 0.7,
         });
 
         console.log(
