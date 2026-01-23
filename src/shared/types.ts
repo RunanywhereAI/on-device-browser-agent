@@ -203,7 +203,7 @@ export type ContentMessage =
 
 export type ExecutorEvent =
   | { type: 'INIT_START' }
-  | { type: 'INIT_PROGRESS'; progress: number }
+  | { type: 'INIT_PROGRESS'; progress: number; phase?: 'downloading' | 'loading_from_cache' | 'initializing'; text?: string }
   | { type: 'INIT_COMPLETE' }
   | { type: 'VLM_INIT_START' }
   | { type: 'VLM_INIT_PROGRESS'; progress: number }

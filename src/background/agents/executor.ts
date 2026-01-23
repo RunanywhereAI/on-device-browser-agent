@@ -92,7 +92,14 @@ export class Executor {
       this.emit({ type: 'INIT_START' });
 
       const unsubscribe = llmEngine.onProgress((progress) => {
-        this.emit({ type: 'INIT_PROGRESS', progress });
+        // Get additional state info (phase, text) from engine
+        const state = llmEngine.getState();
+        this.emit({
+          type: 'INIT_PROGRESS',
+          progress,
+          phase: state.phase,
+          text: state.progressText,
+        });
       });
 
       try {

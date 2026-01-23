@@ -301,11 +301,27 @@ async function handleInitWebLLM(modelId: string): Promise<{ success: boolean; er
 
     const newEngine = await CreateMLCEngine(modelId, {
       initProgressCallback: (report) => {
-        console.log(`[Offscreen] Loading: ${Math.round(report.progress * 100)}% - ${report.text || ''}`);
+        const progressPercent = Math.round(report.progress * 100);
+        const text = report.text || '';
+        console.log(`[Offscreen] Loading: ${progressPercent}% - ${text}`);
+
+        // Detect loading phase from report text
+        let phase = 'initializing';
+        if (text.toLowerCase().includes('loading model from cache') ||
+            text.toLowerCase().includes('cached')) {
+          phase = 'loading_from_cache';
+        } else if (text.toLowerCase().includes('downloading') ||
+                   text.toLowerCase().includes('fetching')) {
+          phase = 'downloading';
+        } else if (text.toLowerCase().includes('loading')) {
+          phase = 'initializing';
+        }
+
         chrome.runtime.sendMessage({
           type: 'LLM_PROGRESS',
           progress: report.progress,
-          text: report.text,
+          text,
+          phase, // Add phase information
         }).catch(() => {});
       },
       logLevel: 'INFO',

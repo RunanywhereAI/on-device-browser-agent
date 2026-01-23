@@ -43,6 +43,8 @@ export function App(): React.ReactElement {
   const [state, setState] = useState<AppState>('idle');
   const [activeTab, setActiveTab] = useState<AppTab>('task');
   const [modelProgress, setModelProgress] = useState(0);
+  const [modelPhase, setModelPhase] = useState<'downloading' | 'loading_from_cache' | 'initializing' | undefined>(undefined);
+  const [modelPhaseText, setModelPhaseText] = useState<string | undefined>(undefined);
   const [plan, setPlan] = useState<string[]>([]);
   const [steps, setSteps] = useState<Step[]>([]);
   const [result, setResult] = useState<string | null>(null);
@@ -110,14 +112,20 @@ export function App(): React.ReactElement {
       case 'INIT_START':
         setState('loading');
         setModelProgress(0);
+        setModelPhase(undefined);
+        setModelPhaseText(undefined);
         break;
 
       case 'INIT_PROGRESS':
         setModelProgress(event.progress);
+        setModelPhase(event.phase);
+        setModelPhaseText(event.text);
         break;
 
       case 'INIT_COMPLETE':
         setModelProgress(1);
+        setModelPhase(undefined);
+        setModelPhaseText(undefined);
         break;
 
       case 'VLM_INIT_START':
@@ -355,7 +363,7 @@ export function App(): React.ReactElement {
 
         {state === 'loading' && (
           <>
-            <ModelStatus progress={modelProgress} />
+            <ModelStatus progress={modelProgress} phase={modelPhase} phaseText={modelPhaseText} />
             <button className="stop-button" onClick={handleCancel}>
               Stop
             </button>
