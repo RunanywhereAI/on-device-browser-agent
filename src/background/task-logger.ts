@@ -2,9 +2,10 @@
  * Task Logger
  *
  * Logs task execution to storage for history and analytics.
+ * (Phase 2.2: Enhanced to store detailed step information)
  */
 
-import { addTaskToHistory, type TaskHistoryEntry } from '../shared/storage';
+import { addTaskToHistory, type TaskHistoryEntry, type DetailedStep } from '../shared/storage';
 
 // ============================================================================
 // Types
@@ -21,6 +22,18 @@ interface TaskLogData {
   success: boolean;
   result?: string;
   error?: string;
+  // Phase 2.2: Detailed tracking
+  detailedSteps: DetailedStep[];
+  planSteps?: string[];
+  currentStep?: {
+    number: number;
+    action: string;
+    params: Record<string, string>;
+    reasoning?: string;
+    stateDetected?: string;
+    confidence?: number;
+    startTime: number;
+  };
 }
 
 // ============================================================================
@@ -44,6 +57,7 @@ export class TaskLogger {
       steps: 0,
       llmCalls: 0,
       success: false,
+      detailedSteps: [], // Phase 2.2
     };
 
     this.stepCount = 0;
@@ -70,6 +84,70 @@ export class TaskLogger {
       this.llmCallCount++;
       this.currentTask.llmCalls = this.llmCallCount;
     }
+  }
+
+  /**
+   * Record the high-level plan (Phase 2.2)
+   */
+  recordPlan(planSteps: string[]): void {
+    if (this.currentTask) {
+      this.currentTask.planSteps = planSteps;
+    }
+  }
+
+  /**
+   * Start a new step with action details (Phase 2.2)
+   */
+  startStep(
+    action: string,
+    params: Record<string, string>,
+    reasoning?: string,
+    stateDetected?: string,
+    confidence?: number
+  ): void {
+    if (this.currentTask) {
+      this.currentTask.currentStep = {
+        number: this.stepCount + 1,
+        action,
+        params,
+        reasoning,
+        stateDetected,
+        confidence,
+        startTime: Date.now(),
+      };
+    }
+  }
+
+  /**
+   * Complete the current step with result (Phase 2.2)
+   */
+  completeStep(success: boolean, data?: string): void {
+    if (!this.currentTask || !this.currentTask.currentStep) return;
+
+    const step = this.currentTask.currentStep;
+    const endTime = Date.now();
+    const duration = endTime - step.startTime;
+
+    const detailedStep: DetailedStep = {
+      number: step.number,
+      action: step.action,
+      params: step.params,
+      status: success ? 'success' : 'failed',
+      reasoning: step.reasoning,
+      stateDetected: step.stateDetected,
+      confidence: step.confidence,
+      timestamp: step.startTime,
+      duration,
+    };
+
+    if (success && data) {
+      detailedStep.result = data.slice(0, 200); // Truncate long results
+    } else if (!success) {
+      detailedStep.error = data;
+    }
+
+    this.currentTask.detailedSteps.push(detailedStep);
+    this.currentTask.currentStep = undefined;
   }
 
   /**
@@ -144,6 +222,9 @@ export class TaskLogger {
       result: this.currentTask.result,
       error: this.currentTask.error,
       timestamp: this.currentTask.startTime,
+      // Phase 2.2: Include detailed information
+      detailedSteps: this.currentTask.detailedSteps,
+      planSteps: this.currentTask.planSteps,
     };
 
     try {

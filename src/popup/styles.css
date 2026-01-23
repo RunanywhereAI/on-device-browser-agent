@@ -1066,6 +1066,183 @@ body {
   color: #f87171;
 }
 
+/* ============================================================================
+   Task History - Detailed Steps (Phase 2.2)
+   ============================================================================ */
+
+.detail-section {
+  margin-top: 16px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
+}
+
+.detail-section h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  margin: 0 0 12px 0;
+}
+
+.plan-steps {
+  margin: 0;
+  padding-left: 20px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.plan-steps li {
+  font-size: 13px;
+  line-height: 1.6;
+  margin-bottom: 6px;
+}
+
+.detailed-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.detailed-step {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  padding: 12px;
+  border-left: 3px solid rgba(255, 255, 255, 0.2);
+}
+
+.detailed-step.success {
+  border-left-color: #10b981;
+}
+
+.detailed-step.failed {
+  border-left-color: #ef4444;
+}
+
+.step-header-detailed {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.step-num {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.6);
+  min-width: 32px;
+}
+
+.step-action-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: white;
+  flex: 1;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+}
+
+.step-status-badge {
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-weight: 600;
+}
+
+.step-status-badge.success {
+  background: rgba(16, 185, 129, 0.2);
+  color: #10b981;
+}
+
+.step-status-badge.failed {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+.step-duration {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+}
+
+.step-params-detailed {
+  margin: 8px 0;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.step-params-detailed .param {
+  margin-bottom: 4px;
+  word-break: break-all;
+}
+
+.step-params-detailed .param:last-child {
+  margin-bottom: 0;
+}
+
+.param-key {
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 600;
+}
+
+.param-value {
+  color: rgba(255, 255, 255, 0.9);
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+}
+
+.step-reasoning-detailed {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+  margin-top: 8px;
+  padding: 8px;
+  background: rgba(59, 130, 246, 0.1);
+  border-left: 2px solid #3b82f6;
+  border-radius: 3px;
+  line-height: 1.5;
+}
+
+.step-reasoning-detailed strong {
+  color: #60a5fa;
+}
+
+.step-source-detailed {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.source-label {
+  font-weight: 600;
+}
+
+.confidence-badge {
+  padding: 2px 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.step-result-detailed {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #10b981;
+  padding: 6px 8px;
+  background: rgba(16, 185, 129, 0.1);
+  border-radius: 4px;
+}
+
+.step-error-detailed {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #ef4444;
+  padding: 6px 8px;
+  background: rgba(239, 68, 68, 0.1);
+  border-radius: 4px;
+}
+
 .empty-state {
   padding: 40px 20px;
   text-align: center;

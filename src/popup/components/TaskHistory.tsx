@@ -187,7 +187,7 @@ export function TaskHistory(): React.ReactElement {
               )}
             </div>
 
-            {/* Expanded Details */}
+            {/* Expanded Details (Phase 2.2) */}
             {selectedTask?.id === task.id && (
               <div className="history-item-details">
                 <div className="detail-row">
@@ -216,6 +216,75 @@ export function TaskHistory(): React.ReactElement {
                     ({task.steps > 0 ? Math.round((task.llmCalls / task.steps) * 100) : 0}% LLM usage)
                   </span>
                 </div>
+
+                {/* Phase 2.2: High-level Plan */}
+                {task.planSteps && task.planSteps.length > 0 && (
+                  <div className="detail-section">
+                    <h4>Plan</h4>
+                    <ul className="plan-steps">
+                      {task.planSteps.map((step, idx) => (
+                        <li key={idx}>{step}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Phase 2.2: Detailed Step Execution */}
+                {task.detailedSteps && task.detailedSteps.length > 0 && (
+                  <div className="detail-section">
+                    <h4>Execution Details</h4>
+                    <div className="detailed-steps">
+                      {task.detailedSteps.map((step) => (
+                        <div key={step.number} className={`detailed-step ${step.status}`}>
+                          <div className="step-header-detailed">
+                            <span className="step-num">#{step.number}</span>
+                            <span className="step-action-name">{step.action}</span>
+                            <span className={`step-status-badge ${step.status}`}>
+                              {step.status === 'success' ? '✓' : '✗'}
+                            </span>
+                            <span className="step-duration">{step.duration}ms</span>
+                          </div>
+
+                          {Object.keys(step.params).length > 0 && (
+                            <div className="step-params-detailed">
+                              {Object.entries(step.params).map(([key, value]) => (
+                                <div key={key} className="param">
+                                  <span className="param-key">{key}:</span>{' '}
+                                  <span className="param-value">{value}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {step.reasoning && (
+                            <div className="step-reasoning-detailed">
+                              <strong>Reasoning:</strong> {step.reasoning}
+                            </div>
+                          )}
+
+                          {step.stateDetected && (
+                            <div className="step-source-detailed">
+                              <span className="source-label">Source:</span> {step.stateDetected}
+                              {step.confidence !== undefined && (
+                                <span className="confidence-badge">
+                                  {Math.round(step.confidence * 100)}%
+                                </span>
+                              )}
+                            </div>
+                          )}
+
+                          {step.result && (
+                            <div className="step-result-detailed">✓ {step.result}</div>
+                          )}
+
+                          {step.error && (
+                            <div className="step-error-detailed">✗ {step.error}</div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

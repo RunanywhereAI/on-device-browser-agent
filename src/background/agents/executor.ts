@@ -164,6 +164,7 @@ export class Executor {
           }
 
           this.emit({ type: 'PLAN_COMPLETE', plan: this.context.plan.plan.steps });
+          taskLogger.recordPlan(this.context.plan.plan.steps); // Phase 2.2
           console.log('[Executor] Plan created:', this.context.plan.plan.steps);
         } catch (error) {
           const errorMsg = error instanceof Error ? error.message : String(error);
@@ -407,15 +408,27 @@ export class Executor {
         }
 
         // Emit action with reasoning (Phase 1.3)
+        const reasoning = action.action.thought || `Action selected via ${actionSource}`;
+        const confidence = actionSource.includes('state machine') ? 0.95 :
+                          actionSource.includes('rule') ? 0.8 : 0.7;
+
         this.emit({
           type: 'STEP_ACTION',
           action: action.action.action_type,
           params: action.action.parameters,
-          reasoning: action.action.thought || `Action selected via ${actionSource}`,
+          reasoning,
           stateDetected: actionSource,
-          confidence: actionSource.includes('state machine') ? 0.95 :
-                     actionSource.includes('rule') ? 0.8 : 0.7,
+          confidence,
         });
+
+        // Phase 2.2: Start detailed step tracking
+        taskLogger.startStep(
+          action.action.action_type,
+          action.action.parameters,
+          reasoning,
+          actionSource,
+          confidence
+        );
 
         console.log(
           `[Executor] Step ${step + 1}: ${action.action.action_type}`,
@@ -466,6 +479,9 @@ export class Executor {
           success: result.success,
           data: result.data,
         });
+
+        // Phase 2.2: Complete detailed step tracking
+        taskLogger.completeStep(result.success, result.data || result.error);
 
         console.log(`[Executor] Action result:`, result);
 

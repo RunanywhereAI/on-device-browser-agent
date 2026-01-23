@@ -15,6 +15,26 @@ export interface UserSettings {
   lastUpdated: number;
 }
 
+/**
+ * Detailed information about a single step in task execution
+ * (Phase 2.2: Enhanced Task History)
+ */
+export interface DetailedStep {
+  number: number;
+  action: string;
+  params: Record<string, string>;
+  status: 'success' | 'failed';
+  result?: string;
+  error?: string;
+  // Agent reasoning (from Phase 1.3)
+  reasoning?: string;
+  stateDetected?: string;
+  confidence?: number;
+  // Timing
+  timestamp: number;
+  duration: number; // ms
+}
+
 export interface TaskHistoryEntry {
   id: string;
   description: string;
@@ -27,6 +47,9 @@ export interface TaskHistoryEntry {
   result?: string;
   error?: string;
   timestamp: number;
+  // Detailed step-by-step information (Phase 2.2)
+  detailedSteps?: DetailedStep[];
+  planSteps?: string[]; // High-level plan from Planner
 }
 
 export interface StorageData {
