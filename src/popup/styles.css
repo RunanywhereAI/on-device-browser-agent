@@ -672,6 +672,178 @@ body {
   flex: 1;
 }
 
+.progress-while-paused {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.progress-while-paused h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 12px;
+}
+
+/* ============================================================================
+   Obstacle Notification Component (Phase 2.3)
+   ============================================================================ */
+
+.obstacle-notification {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.obstacle-notification.warning {
+  border-left: 4px solid #f59e0b;
+}
+
+.obstacle-notification.error {
+  border-left: 4px solid #ef4444;
+}
+
+.obstacle-header {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.obstacle-icon {
+  font-size: 48px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.obstacle-title-section {
+  flex: 1;
+}
+
+.obstacle-title-section h2 {
+  font-size: 20px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 8px 0;
+}
+
+.obstacle-description {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.obstacle-instructions {
+  background: #f9fafb;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.obstacle-instructions h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 12px 0;
+}
+
+.obstacle-instructions ol {
+  margin: 0;
+  padding-left: 20px;
+  color: #4b5563;
+}
+
+.obstacle-instructions li {
+  font-size: 14px;
+  line-height: 1.6;
+  margin-bottom: 8px;
+}
+
+.obstacle-instructions li:last-child {
+  margin-bottom: 0;
+}
+
+.obstacle-details {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+
+.obstacle-details strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #991b1b;
+  margin-bottom: 8px;
+}
+
+.obstacle-details pre {
+  margin: 0;
+  font-size: 12px;
+  color: #7f1d1d;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+}
+
+.obstacle-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.obstacle-actions .resume-button {
+  flex: 1;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.obstacle-actions .resume-button:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+}
+
+.obstacle-actions .cancel-button {
+  flex: 1;
+  padding: 12px 20px;
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.obstacle-actions .cancel-button:hover {
+  background: #e5e7eb;
+  border-color: #9ca3af;
+}
+
+.obstacle-timestamp {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e5e7eb;
+  text-align: center;
+}
+
+.obstacle-timestamp span {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
 /* ============================================================================
  * Tabs
  * ============================================================================ */

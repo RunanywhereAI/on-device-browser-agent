@@ -10,6 +10,7 @@ import { ProgressDisplay } from './components/ProgressDisplay';
 import { ModelStatus } from './components/ModelStatus';
 import { ResultView } from './components/ResultView';
 import { TaskHistory } from './components/TaskHistory';
+import { ObstacleNotification, type ObstacleInfo } from './components/ObstacleNotification';
 import { POPUP_PORT_NAME } from '../shared/constants';
 import type { ExecutorEvent } from '../shared/types';
 
@@ -33,11 +34,6 @@ export interface Step {
 
 type AppState = 'idle' | 'loading' | 'planning' | 'executing' | 'paused' | 'complete' | 'error';
 type AppTab = 'task' | 'history';
-
-interface ObstacleInfo {
-  type: string;
-  message: string;
-}
 
 // ============================================================================
 // App Component
@@ -227,8 +223,9 @@ export function App(): React.ReactElement {
       // Obstacle handling events
       case 'OBSTACLE_DETECTED':
         setObstacle({
-          type: event.obstacle,
+          type: event.obstacle as ObstacleInfo['type'],
           message: event.message,
+          timestamp: Date.now(),
         });
         break;
 
@@ -390,28 +387,15 @@ export function App(): React.ReactElement {
 
         {state === 'paused' && obstacle && (
           <div className="paused-view">
-            <div className="obstacle-icon">
-              {obstacle.type === 'LOGIN_REQUIRED' && '🔐'}
-              {obstacle.type === 'CAPTCHA' && '🤖'}
-              {obstacle.type === 'OUT_OF_STOCK' && '📦'}
-              {obstacle.type === 'ERROR' && '⚠️'}
+            <ObstacleNotification
+              obstacle={obstacle}
+              onResume={handleResume}
+              onCancel={handleCancel}
+            />
+            <div className="progress-while-paused">
+              <h3>Progress so far:</h3>
+              <ProgressDisplay state="executing" plan={plan} steps={steps} />
             </div>
-            <h2>Action Required</h2>
-            <div className="obstacle-message">
-              {obstacle.type === 'LOGIN_REQUIRED' && 'Please sign in to your account in the browser tab.'}
-              {obstacle.type === 'CAPTCHA' && 'Please solve the CAPTCHA in the browser tab.'}
-              {obstacle.type === 'OUT_OF_STOCK' && 'This item is out of stock.'}
-              {obstacle.type === 'ERROR' && obstacle.message}
-            </div>
-            <div className="paused-actions">
-              <button className="resume-button" onClick={handleResume}>
-                Resume Task
-              </button>
-              <button className="stop-button" onClick={handleCancel}>
-                Cancel
-              </button>
-            </div>
-            <ProgressDisplay state="executing" plan={plan} steps={steps} />
           </div>
         )}
 
