@@ -365,7 +365,7 @@ function sleep(ms: number): Promise<void> {
 }
 
 /**
- * Capture screenshot of the visible tab
+ * Capture screenshot of the visible tab with GPU-accelerated compression
  * Returns base64 jpeg data URL or undefined if capture fails
  */
 async function captureScreenshot(tabId: number): Promise<string | undefined> {
@@ -377,14 +377,49 @@ async function captureScreenshot(tabId: number): Promise<string | undefined> {
       return undefined;
     }
 
-    // Capture the visible tab as jpeg (smaller than png)
+    // Capture the visible tab as jpeg
     const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, {
       format: 'jpeg',
-      quality: 60, // Lower quality for smaller size
+      quality: 85, // Higher quality, we'll compress with GPU
     });
 
-    console.log('[Background] Screenshot captured, size:', Math.round(dataUrl.length / 1024), 'KB');
-    return dataUrl;
+    const originalSize = Math.round(dataUrl.length / 1024);
+    console.log('[Background] Screenshot captured, original size:', originalSize, 'KB');
+
+    // GPU-accelerated compression and downscaling
+    try {
+      // Dynamic import to avoid loading in service worker context
+      const { imageProcessor } = await import('../shared/image-processor');
+
+      // Initialize GPU processor if not already done
+      if (!await imageProcessor.initialize()) {
+        console.warn('[Background] GPU not available, using original screenshot');
+        return dataUrl;
+      }
+
+      // Process with GPU (downscale + compress)
+      const processed = await imageProcessor.processImage(dataUrl, {
+        maxWidth: 1280,
+        maxHeight: 720,
+        quality: 0.7,
+        format: 'jpeg',
+      });
+
+      const newSize = Math.round(processed.processedSize / 1024);
+      const ratio = processed.compressionRatio;
+
+      console.log('[Background] Screenshot compressed:', {
+        original: originalSize + ' KB',
+        compressed: newSize + ' KB',
+        ratio: ratio.toFixed(2) + 'x',
+        time: processed.processingTime.toFixed(1) + 'ms',
+      });
+
+      return processed.dataUrl;
+    } catch (error) {
+      console.warn('[Background] GPU compression failed, using original:', error);
+      return dataUrl;
+    }
   } catch (error) {
     console.warn('[Background] Failed to capture screenshot:', error);
     return undefined;
