@@ -87,7 +87,11 @@ Pick ONE action. Consider what was already tried. JSON only:
 {"action":"navigate|click|type|press_enter|scroll|done|fail","params":{...},"reason":"..."}`;
 
     try {
-      const rawResult = await this.invoke(prompt) as { action: string; params: Record<string, string>; reason: string };
+      // Pass element count for intelligent model routing
+      const rawResult = await this.invoke(
+        prompt,
+        domState.interactiveElements.length
+      ) as { action: string; params: Record<string, string>; reason: string };
 
       // Convert simplified format to NavigatorOutput
       const result: NavigatorOutput = {

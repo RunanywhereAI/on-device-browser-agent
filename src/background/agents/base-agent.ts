@@ -10,6 +10,7 @@
 import { ChatCompletionMessageParam } from '@mlc-ai/web-llm';
 import { llmEngine } from '../llm-engine';
 import { AGENT_TEMPERATURE, AGENT_MAX_TOKENS } from '../../shared/constants';
+import { selectModelForTask, trackModelUsage, type ModelTier } from '../../shared/model-router';
 
 // ============================================================================
 // Base Agent
@@ -25,13 +26,33 @@ export abstract class BaseAgent<TOutput> {
   /** Conversation history for multi-turn reasoning */
   protected conversationHistory: ChatCompletionMessageParam[] = [];
 
+  /** Track number of steps for complexity scoring */
+  protected stepCount: number = 0;
+
+  /** Last used model tier (for tracking) */
+  protected lastModelTier: ModelTier | null = null;
+
   constructor(protected agentName: string) {}
 
   /**
    * Invoke the agent with a user message
    * Returns parsed JSON output matching TOutput schema
    */
-  async invoke(userMessage: string): Promise<TOutput> {
+  async invoke(userMessage: string, elementCount: number = 10): Promise<TOutput> {
+    // Select appropriate model based on task complexity
+    const selectedModel = selectModelForTask(
+      userMessage,
+      elementCount,
+      this.stepCount
+    );
+
+    // Ensure LLM engine is initialized with the selected model
+    const engineState = llmEngine.getState();
+    if (!engineState.ready || engineState.currentModel !== selectedModel) {
+      console.log(`[${this.agentName}] Switching to model: ${selectedModel}`);
+      await llmEngine.initialize(selectedModel);
+    }
+
     // Build messages array with system prompt, history, and new message
     const messages: ChatCompletionMessageParam[] = [
       { role: 'system', content: this.buildSystemPrompt() },
@@ -46,6 +67,9 @@ export abstract class BaseAgent<TOutput> {
       temperature: AGENT_TEMPERATURE,
       maxTokens: AGENT_MAX_TOKENS,
     });
+
+    // Increment step count for complexity tracking
+    this.stepCount++;
 
     console.log(`[${this.agentName}] Response:`, response.slice(0, 200) + '...');
 
