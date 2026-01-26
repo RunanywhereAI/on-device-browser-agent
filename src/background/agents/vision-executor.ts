@@ -192,10 +192,14 @@ export class VisionExecutor {
           throw error;
         }
 
+        // Emit action with reasoning (Phase 1.3)
         this.emit({
           type: 'STEP_ACTION',
           action: action.action.action_type,
           params: action.action.parameters,
+          reasoning: action.action.thought || 'Action based on visual analysis',
+          stateDetected: 'Vision mode (VLM)',
+          confidence: 0.75, // VLM confidence
         });
 
         console.log(

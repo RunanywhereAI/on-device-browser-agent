@@ -18,6 +18,8 @@ interface LLMEngineState {
   currentModel: string | null;
   error: string | null;
   ready: boolean;
+  phase?: 'downloading' | 'loading_from_cache' | 'initializing';
+  progressText?: string;
 }
 
 interface ChatOptions {
@@ -87,6 +89,8 @@ class LLMEngineManager {
     chrome.runtime.onMessage.addListener((message) => {
       if (message.type === 'LLM_PROGRESS') {
         this.state.loadProgress = message.progress;
+        this.state.phase = message.phase;
+        this.state.progressText = message.text;
         this.notifyProgress(message.progress);
       }
 

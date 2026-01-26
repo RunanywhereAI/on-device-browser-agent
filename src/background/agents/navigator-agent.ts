@@ -87,7 +87,11 @@ Pick ONE action. Consider what was already tried. JSON only:
 {"action":"navigate|click|type|press_enter|scroll|done|fail","params":{...},"reason":"..."}`;
 
     try {
-      const rawResult = await this.invoke(prompt) as { action: string; params: Record<string, string>; reason: string };
+      // Pass element count for intelligent model routing
+      const rawResult = await this.invoke(
+        prompt,
+        domState.interactiveElements.length
+      ) as { action: string; params: Record<string, string>; reason: string };
 
       // Convert simplified format to NavigatorOutput
       const result: NavigatorOutput = {
@@ -233,6 +237,107 @@ Pick ONE action. Consider what was already tried. JSON only:
         // Search done
         if (!task.includes('click')) {
           return this.act('done', { result: 'Search results shown' }, 'Done');
+        }
+      }
+    }
+
+    // ========== Wiki Rules (wiki.amazon.com, wikipedia.org, etc.) ==========
+    if (url.includes('wiki')) {
+      // Extract topic/page name from task
+      const wikiTopicMatch = task.match(/(?:find|search|look for|read|open|go to)\s+(?:about\s+)?["']?([^"']+?)["']?(?:\s+on|\s+in|\s+wiki|\s*$)/i);
+      const wikiTopic = wikiTopicMatch ? wikiTopicMatch[1].toLowerCase() : null;
+
+      // On wiki homepage or main page - search if needed
+      if ((url.includes('/Main') || url.includes('/Home') || url.endsWith('wiki')) && wikiTopic) {
+        // Check if we already searched
+        const alreadySearched = ctx.history.some(h =>
+          (h.action.action_type === 'type' && h.action.parameters.text?.toLowerCase().includes(wikiTopic.slice(0, 5))) ||
+          (h.action.action_type === 'click' && h.result.success)
+        );
+
+        if (!alreadySearched) {
+          // Try to find and use search box
+          const wikiSearch = dom.interactiveElements.find(e =>
+            e.tag === 'input' &&
+            (e.selector.toLowerCase().includes('search') ||
+             e.text.toLowerCase().includes('search') ||
+             e.selector.includes('searchInput'))
+          );
+
+          if (wikiSearch) {
+            // Check if we already typed
+            const alreadyTyped = ctx.history.some(h =>
+              h.action.action_type === 'type' && h.result.success
+            );
+
+            if (!alreadyTyped) {
+              return this.act('type', { selector: wikiSearch.selector, text: wikiTopic }, 'Type wiki search');
+            } else {
+              // Already typed, press enter
+              return this.act('press_enter', { selector: wikiSearch.selector }, 'Submit wiki search');
+            }
+          }
+
+          // No search box - look for matching link
+          const matchingLink = dom.interactiveElements.find(e =>
+            e.tag === 'a' &&
+            e.text.length > 3 &&
+            (e.text.toLowerCase().includes(wikiTopic) ||
+             wikiTopic.split(/\s+/).some(word => word.length > 3 && e.text.toLowerCase().includes(word)))
+          );
+
+          if (matchingLink) {
+            return this.act('click', { selector: matchingLink.selector }, `Click wiki link: ${matchingLink.text.slice(0, 40)}`);
+          }
+        }
+      }
+
+      // On wiki search results or article list - click relevant link
+      if (url.includes('search') || url.includes('results') || url.includes('/view/')) {
+        if (wikiTopic) {
+          // Find link matching the topic
+          const topicLink = dom.interactiveElements.find(e =>
+            e.tag === 'a' &&
+            e.text.length > 3 &&
+            (e.text.toLowerCase().includes(wikiTopic) ||
+             wikiTopic.split(/\s+/).some(word => word.length > 3 && e.text.toLowerCase().includes(word)))
+          );
+
+          if (topicLink) {
+            return this.act('click', { selector: topicLink.selector }, `Open wiki article: ${topicLink.text.slice(0, 40)}`);
+          }
+        }
+
+        // If task is just "search" or "find", mark as done when on results
+        if ((task.includes('search') || task.includes('find')) && !task.includes('read') && !task.includes('open')) {
+          const hasSearched = ctx.history.some(h =>
+            h.action.action_type === 'type' || h.action.action_type === 'click'
+          );
+          if (hasSearched) {
+            return this.act('done', { result: 'Wiki search complete' }, 'Done');
+          }
+        }
+      }
+
+      // On wiki article page - check if task is complete
+      if (wikiTopic && page.includes(wikiTopic)) {
+        // We're on a page containing the topic
+        if (task.includes('read') || task.includes('find') || task.includes('open')) {
+          return this.act('done', { result: `Found wiki page about ${wikiTopic}` }, 'Done');
+        }
+      }
+
+      // Generic wiki navigation - if task mentions specific action
+      const wikiAction = task.match(/(?:click|open|go to)\s+["']?([^"']+?)["']?(?:\s+link|\s+page|\s*$)/i);
+      if (wikiAction) {
+        const actionTarget = wikiAction[1].toLowerCase();
+        const targetLink = dom.interactiveElements.find(e =>
+          e.tag === 'a' &&
+          (e.text.toLowerCase().includes(actionTarget) ||
+           e.selector.toLowerCase().includes(actionTarget))
+        );
+        if (targetLink) {
+          return this.act('click', { selector: targetLink.selector }, `Click: ${targetLink.text.slice(0, 40)}`);
         }
       }
     }

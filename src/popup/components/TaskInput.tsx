@@ -4,8 +4,9 @@
  * Allows users to enter natural language tasks for the AI agent to execute.
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { AVAILABLE_LLM_MODELS, DEFAULT_MODEL } from '../../shared/constants';
+import { loadSettings, saveSettings } from '../../shared/storage';
 
 interface TaskInputProps {
   onSubmit: (task: string, modelId: string, visionMode: boolean, vlmModelId: string) => void;
@@ -21,10 +22,27 @@ export function TaskInput({ onSubmit }: TaskInputProps): React.ReactElement {
   const [task, setTask] = useState('');
   const [modelId, setModelId] = useState(DEFAULT_MODEL);
 
+  // Load saved settings on mount
+  useEffect(() => {
+    loadSettings().then((settings) => {
+      setModelId(settings.modelId);
+      console.log('[TaskInput] Loaded saved model:', settings.modelId);
+    }).catch((error) => {
+      console.error('[TaskInput] Failed to load settings:', error);
+    });
+  }, []);
+
   const handleSubmit = useCallback(
-    (e: React.FormEvent) => {
+    async (e: React.FormEvent) => {
       e.preventDefault();
       if (task.trim()) {
+        // Save model selection before submitting
+        try {
+          await saveSettings({ modelId, visionMode: false, vlmModelId: 'small' });
+          console.log('[TaskInput] Saved model selection:', modelId);
+        } catch (error) {
+          console.error('[TaskInput] Failed to save settings:', error);
+        }
         // Vision mode disabled - always pass false
         onSubmit(task.trim(), modelId, false, 'small');
       }

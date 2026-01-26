@@ -9,6 +9,10 @@ import { TaskInput } from './components/TaskInput';
 import { ProgressDisplay } from './components/ProgressDisplay';
 import { ModelStatus } from './components/ModelStatus';
 import { ResultView } from './components/ResultView';
+import { TaskHistory } from './components/TaskHistory';
+import { ObstacleNotification, type ObstacleInfo } from './components/ObstacleNotification';
+import { StateMachineViewer } from './components/StateMachineViewer';
+import { StateMachineBuilder } from './components/StateMachineBuilder';
 import { POPUP_PORT_NAME } from '../shared/constants';
 import type { ExecutorEvent } from '../shared/types';
 
@@ -23,14 +27,15 @@ export interface Step {
   status: 'pending' | 'running' | 'success' | 'failed';
   result?: string;
   error?: string;
+  // Agent reasoning fields (Phase 1.3)
+  reasoning?: string;        // Why this action was chosen
+  stateDetected?: string;    // Which state machine matched
+  alternatives?: string[];   // Other options considered
+  confidence?: number;       // Confidence level (0-1)
 }
 
 type AppState = 'idle' | 'loading' | 'planning' | 'executing' | 'paused' | 'complete' | 'error';
-
-interface ObstacleInfo {
-  type: string;
-  message: string;
-}
+type AppTab = 'task' | 'history' | 'state-machines' | 'builder';
 
 // ============================================================================
 // App Component
@@ -39,7 +44,10 @@ interface ObstacleInfo {
 export function App(): React.ReactElement {
   // Application state
   const [state, setState] = useState<AppState>('idle');
+  const [activeTab, setActiveTab] = useState<AppTab>('task');
   const [modelProgress, setModelProgress] = useState(0);
+  const [modelPhase, setModelPhase] = useState<'downloading' | 'loading_from_cache' | 'initializing' | undefined>(undefined);
+  const [modelPhaseText, setModelPhaseText] = useState<string | undefined>(undefined);
   const [plan, setPlan] = useState<string[]>([]);
   const [steps, setSteps] = useState<Step[]>([]);
   const [result, setResult] = useState<string | null>(null);
@@ -107,14 +115,20 @@ export function App(): React.ReactElement {
       case 'INIT_START':
         setState('loading');
         setModelProgress(0);
+        setModelPhase(undefined);
+        setModelPhaseText(undefined);
         break;
 
       case 'INIT_PROGRESS':
         setModelProgress(event.progress);
+        setModelPhase(event.phase);
+        setModelPhaseText(event.text);
         break;
 
       case 'INIT_COMPLETE':
         setModelProgress(1);
+        setModelPhase(undefined);
+        setModelPhaseText(undefined);
         break;
 
       case 'VLM_INIT_START':
@@ -166,6 +180,10 @@ export function App(): React.ReactElement {
           if (last) {
             last.action = event.action;
             last.params = event.params;
+            // Phase 1.3: Capture agent reasoning
+            last.reasoning = event.reasoning;
+            last.stateDetected = event.stateDetected;
+            last.confidence = event.confidence;
           }
           return updated;
         });
@@ -207,8 +225,9 @@ export function App(): React.ReactElement {
       // Obstacle handling events
       case 'OBSTACLE_DETECTED':
         setObstacle({
-          type: event.obstacle,
+          type: event.obstacle as ObstacleInfo['type'],
           message: event.message,
+          timestamp: Date.now(),
         });
         break;
 
@@ -328,12 +347,45 @@ export function App(): React.ReactElement {
         <p>AI Web Automation (On-Device)</p>
       </header>
 
+      {/* Tab Navigation (only show when idle) */}
+      {state === 'idle' && (
+        <div className="tabs">
+          <button
+            className={`tab ${activeTab === 'task' ? 'active' : ''}`}
+            onClick={() => setActiveTab('task')}
+          >
+            New Task
+          </button>
+          <button
+            className={`tab ${activeTab === 'history' ? 'active' : ''}`}
+            onClick={() => setActiveTab('history')}
+          >
+            History
+          </button>
+          <button
+            className={`tab ${activeTab === 'state-machines' ? 'active' : ''}`}
+            onClick={() => setActiveTab('state-machines')}
+          >
+            State Machines
+          </button>
+          <button
+            className={`tab ${activeTab === 'builder' ? 'active' : ''}`}
+            onClick={() => setActiveTab('builder')}
+          >
+            Builder
+          </button>
+        </div>
+      )}
+
       <main className="main">
-        {state === 'idle' && <TaskInput onSubmit={handleSubmitTask} />}
+        {state === 'idle' && activeTab === 'task' && <TaskInput onSubmit={handleSubmitTask} />}
+        {state === 'idle' && activeTab === 'history' && <TaskHistory />}
+        {state === 'idle' && activeTab === 'state-machines' && <StateMachineViewer />}
+        {state === 'idle' && activeTab === 'builder' && <StateMachineBuilder />}
 
         {state === 'loading' && (
           <>
-            <ModelStatus progress={modelProgress} />
+            <ModelStatus progress={modelProgress} phase={modelPhase} phaseText={modelPhaseText} />
             <button className="stop-button" onClick={handleCancel}>
               Stop
             </button>
@@ -351,28 +403,15 @@ export function App(): React.ReactElement {
 
         {state === 'paused' && obstacle && (
           <div className="paused-view">
-            <div className="obstacle-icon">
-              {obstacle.type === 'LOGIN_REQUIRED' && '🔐'}
-              {obstacle.type === 'CAPTCHA' && '🤖'}
-              {obstacle.type === 'OUT_OF_STOCK' && '📦'}
-              {obstacle.type === 'ERROR' && '⚠️'}
+            <ObstacleNotification
+              obstacle={obstacle}
+              onResume={handleResume}
+              onCancel={handleCancel}
+            />
+            <div className="progress-while-paused">
+              <h3>Progress so far:</h3>
+              <ProgressDisplay state="executing" plan={plan} steps={steps} />
             </div>
-            <h2>Action Required</h2>
-            <div className="obstacle-message">
-              {obstacle.type === 'LOGIN_REQUIRED' && 'Please sign in to your account in the browser tab.'}
-              {obstacle.type === 'CAPTCHA' && 'Please solve the CAPTCHA in the browser tab.'}
-              {obstacle.type === 'OUT_OF_STOCK' && 'This item is out of stock.'}
-              {obstacle.type === 'ERROR' && obstacle.message}
-            </div>
-            <div className="paused-actions">
-              <button className="resume-button" onClick={handleResume}>
-                Resume Task
-              </button>
-              <button className="stop-button" onClick={handleCancel}>
-                Cancel
-              </button>
-            </div>
-            <ProgressDisplay state="executing" plan={plan} steps={steps} />
           </div>
         )}
 

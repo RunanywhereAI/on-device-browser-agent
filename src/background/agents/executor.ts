@@ -17,6 +17,7 @@ import { siteRouter } from './site-router';
 import { changeObserver } from './change-observer';
 import { detectObstacle, getObstacleMessage, type DetectedObstacle } from './obstacle-detector';
 import { llmEngine } from '../llm-engine';
+import { taskLogger } from '../task-logger';
 import type {
   AgentContext,
   DOMState,
@@ -83,12 +84,22 @@ export class Executor {
     siteRouter.initialize(task);
     console.log(`[Executor] Site router initialized, can handle: ${siteRouter.canHandle(task, '')}`)
 
+    // Start task logging
+    taskLogger.startTask(task, modelId || 'default', false);
+
     try {
       // Phase 1: Initialize LLM
       this.emit({ type: 'INIT_START' });
 
       const unsubscribe = llmEngine.onProgress((progress) => {
-        this.emit({ type: 'INIT_PROGRESS', progress });
+        // Get additional state info (phase, text) from engine
+        const state = llmEngine.getState();
+        this.emit({
+          type: 'INIT_PROGRESS',
+          progress,
+          phase: state.phase,
+          text: state.progressText,
+        });
       });
 
       try {
@@ -133,6 +144,7 @@ export class Executor {
         try {
           this.context.plan = await this.planner.createPlan(task);
           this.llmCallsRemaining--; // Count this LLM call
+          taskLogger.recordLLMCall();
 
           // Validate plan structure
           const steps = this.context.plan?.plan?.steps;
@@ -152,6 +164,7 @@ export class Executor {
           }
 
           this.emit({ type: 'PLAN_COMPLETE', plan: this.context.plan.plan.steps });
+          taskLogger.recordPlan(this.context.plan.plan.steps); // Phase 2.2
           console.log('[Executor] Plan created:', this.context.plan.plan.steps);
         } catch (error) {
           const errorMsg = error instanceof Error ? error.message : String(error);
@@ -168,10 +181,12 @@ export class Executor {
 
       for (let step = 0; step < MAX_STEPS; step++) {
         if (this.shouldCancel) {
+          taskLogger.cancelTask();
           throw new Error('Task cancelled by user');
         }
 
         this.emit({ type: 'STEP_START', stepNumber: step + 1 });
+        taskLogger.recordStep();
 
         // Get current DOM state
         let domState: DOMState;
@@ -305,6 +320,7 @@ export class Executor {
         if (!action && this.llmCallsRemaining > 0) {
           try {
             this.llmCallsRemaining--;
+            taskLogger.recordLLMCall();
             console.log(`[Executor] LLM fallback (${this.llmCallsRemaining} calls remaining)`);
             action = await this.navigator.getNextAction(this.context!, domState);
             actionSource = 'LLM';
@@ -316,6 +332,7 @@ export class Executor {
             if (replans < MAX_REPLANS && this.llmCallsRemaining > 0) {
               replans++;
               this.llmCallsRemaining--;
+              taskLogger.recordLLMCall();
               this.emit({ type: 'REPLAN', reason: `Navigator error: ${errorMsg}` });
               this.navigator.reset();
               this.context!.plan = await this.planner.replan(this.context!, errorMsg);
@@ -328,9 +345,30 @@ export class Executor {
           }
         }
 
-        // 4. No action available - fail
+        // 4. No action available - fail with helpful message
         if (!action) {
-          const error = 'No applicable action found (state machine, rules, and LLM exhausted)';
+          const pageInfo = `Current page: ${domState.title || 'Unknown'} (${domState.url})`;
+          const elementInfo = `Found ${domState.interactiveElements.length} interactive elements`;
+
+          let error = '⚠️ COULD NOT DETERMINE NEXT ACTION\n\n';
+          error += 'The agent couldn\'t figure out what to do next. This usually happens when:\n\n';
+          error += '• The page structure is unexpected or has changed\n';
+          error += '• The page requires login or verification (CAPTCHA)\n';
+          error += '• The content is dynamically loaded and not yet visible\n';
+          error += '• The task is not achievable on the current page\n\n';
+          error += 'What to try:\n';
+          error += '✓ Refresh the page and try again\n';
+          error += '✓ Enable Vision Mode for better understanding\n';
+          error += '✓ Check if you\'re logged in to the site\n';
+          error += '✓ Make sure you\'re on the correct page\n';
+          error += '✓ Try a simpler or more specific task description\n\n';
+          error += 'Debug Information:\n';
+          error += `• ${pageInfo}\n`;
+          error += `• ${elementInfo}\n`;
+          error += `• State machines checked: ${machineResult ? 'matched but no action' : 'no match'}\n`;
+          error += `• Rules checked: ${action ? 'matched' : 'no match'}\n`;
+          error += '• LLM reasoning: Exhausted or failed to generate valid action\n';
+
           this.emit({ type: 'TASK_FAILED', error });
           throw new Error(error);
         }
@@ -369,11 +407,28 @@ export class Executor {
           sameActionCount = 1;
         }
 
+        // Emit action with reasoning (Phase 1.3)
+        const reasoning = action.action.thought || `Action selected via ${actionSource}`;
+        const confidence = actionSource.includes('state machine') ? 0.95 :
+                          actionSource.includes('rule') ? 0.8 : 0.7;
+
         this.emit({
           type: 'STEP_ACTION',
           action: action.action.action_type,
           params: action.action.parameters,
+          reasoning,
+          stateDetected: actionSource,
+          confidence,
         });
+
+        // Phase 2.2: Start detailed step tracking
+        taskLogger.startStep(
+          action.action.action_type,
+          action.action.parameters,
+          reasoning,
+          actionSource,
+          confidence
+        );
 
         console.log(
           `[Executor] Step ${step + 1}: ${action.action.action_type}`,
@@ -383,6 +438,7 @@ export class Executor {
         // Handle terminal actions
         if (action.action.action_type === 'done') {
           const result = action.action.parameters.result || 'Task completed successfully';
+          await taskLogger.endTaskSuccess(result);
           this.emit({ type: 'TASK_COMPLETE', result });
           return result;
         }
@@ -393,6 +449,7 @@ export class Executor {
           // Try replanning
           if (replans < MAX_REPLANS) {
             replans++;
+            taskLogger.recordLLMCall();
             this.emit({ type: 'REPLAN', reason });
             this.navigator.reset();
             this.context.plan = await this.planner.replan(this.context, reason);
@@ -401,6 +458,7 @@ export class Executor {
             continue;
           }
 
+          await taskLogger.endTaskFailure(reason);
           this.emit({ type: 'TASK_FAILED', error: reason });
           throw new Error(reason);
         }
@@ -421,6 +479,9 @@ export class Executor {
           success: result.success,
           data: result.data,
         });
+
+        // Phase 2.2: Complete detailed step tracking
+        taskLogger.completeStep(result.success, result.data || result.error);
 
         console.log(`[Executor] Action result:`, result);
 
@@ -456,8 +517,14 @@ export class Executor {
 
       // Max steps exceeded
       const error = `Maximum steps (${MAX_STEPS}) exceeded without completing task`;
+      await taskLogger.endTaskFailure(error);
       this.emit({ type: 'TASK_FAILED', error });
       throw new Error(error);
+    } catch (error) {
+      // Catch any unhandled errors and log them
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      await taskLogger.endTaskFailure(errorMsg);
+      throw error;
     } finally {
       this.isRunning = false;
       this.reset();

@@ -203,7 +203,7 @@ export type ContentMessage =
 
 export type ExecutorEvent =
   | { type: 'INIT_START' }
-  | { type: 'INIT_PROGRESS'; progress: number }
+  | { type: 'INIT_PROGRESS'; progress: number; phase?: 'downloading' | 'loading_from_cache' | 'initializing'; text?: string }
   | { type: 'INIT_COMPLETE' }
   | { type: 'VLM_INIT_START' }
   | { type: 'VLM_INIT_PROGRESS'; progress: number }
@@ -211,7 +211,7 @@ export type ExecutorEvent =
   | { type: 'PLAN_START' }
   | { type: 'PLAN_COMPLETE'; plan: string[] }
   | { type: 'STEP_START'; stepNumber: number }
-  | { type: 'STEP_ACTION'; action: string; params: Record<string, string> }
+  | { type: 'STEP_ACTION'; action: string; params: Record<string, string>; reasoning?: string; stateDetected?: string; confidence?: number }
   | { type: 'STEP_RESULT'; success: boolean; data?: string }
   | { type: 'SCREENSHOT_CAPTURED' }
   | { type: 'VISION_ANALYSIS_COMPLETE' }

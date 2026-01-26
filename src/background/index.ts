@@ -12,6 +12,7 @@
 import { executor } from './agents/executor';
 import { visionExecutor } from './agents/vision-executor';
 import { visionEngine } from './vision-engine';
+import { stateRegistry } from './agents/state-registry';
 import { POPUP_PORT_NAME, POST_NAVIGATION_DELAY, PAGE_LOAD_TIMEOUT } from '../shared/constants';
 import type { DOMState, ActionResult, ExecutorEvent, BackgroundMessage } from '../shared/types';
 
@@ -158,9 +159,22 @@ async function getDOMState(tabId: number): Promise<DOMState> {
           };
         }
 
-        // Not restricted but content script not ready - wait and retry
-        if (attempt < maxRetries - 1) {
-          console.log(`[Background] Content script not ready, retrying (${attempt + 1}/${maxRetries})...`);
+        // Not restricted but content script not ready - try to inject it
+        console.log(`[Background] Content script not ready on attempt ${attempt + 1}, attempting re-injection...`);
+        const injected = await injectContentScriptIfNeeded(tabId);
+
+        if (injected) {
+          console.log('[Background] Content script injected, waiting for ready...');
+          await sleep(500); // Give it time to initialize
+          const nowReady = await waitForContentScript(tabId, 1000);
+
+          if (!nowReady && attempt < maxRetries - 1) {
+            console.log('[Background] Still not ready after injection, retrying...');
+            await sleep(retryDelay);
+            continue;
+          }
+        } else if (attempt < maxRetries - 1) {
+          console.log(`[Background] Could not inject content script, retrying (${attempt + 1}/${maxRetries})...`);
           await sleep(retryDelay);
           continue;
         }
@@ -192,21 +206,38 @@ async function getDOMState(tabId: number): Promise<DOMState> {
     }
   }
 
-  // All retries failed - return error state with actual tab info
+  // All retries failed - return error state with detailed guidance
   try {
     const tab = await chrome.tabs.get(tabId);
+    const url = tab.url || 'unknown';
+
+    // Provide specific guidance based on context
+    let errorMessage = '⚠️ CONTENT SCRIPT ERROR\n\n';
+    errorMessage += 'Could not communicate with the page after multiple attempts.\n\n';
+    errorMessage += 'This usually happens when:\n';
+    errorMessage += '• The page is still loading or refreshing\n';
+    errorMessage += '• The page blocked the extension\n';
+    errorMessage += '• The page navigation destroyed the content script\n';
+    errorMessage += '• The page uses strict Content Security Policy\n\n';
+    errorMessage += 'What to try:\n';
+    errorMessage += '✓ Refresh the page and try again\n';
+    errorMessage += '✓ Make sure you\'re on a normal website (not chrome:// pages)\n';
+    errorMessage += '✓ Try navigating to a different page first\n';
+    errorMessage += '✓ Check if the site allows extensions\n\n';
+    errorMessage += `Current URL: ${url}`;
+
     return {
-      url: tab.url || 'unknown',
+      url,
       title: tab.title || 'Error loading page',
       interactiveElements: [],
-      pageText: 'ERROR: Could not communicate with page. The page may still be loading or may have blocked the extension.',
+      pageText: errorMessage,
     };
   } catch {
     return {
       url: 'unknown',
-      title: 'Error loading page state',
+      title: 'Communication Error',
       interactiveElements: [],
-      pageText: '',
+      pageText: '⚠️ FATAL ERROR: Could not communicate with the tab. The tab may have been closed.',
     };
   }
 }
@@ -331,6 +362,48 @@ async function ensureContentScriptLoaded(tabId: number): Promise<boolean> {
   return isReady;
 }
 
+/**
+ * Inject content script if it's not already loaded
+ * Returns true if injection succeeded or script was already present
+ */
+async function injectContentScriptIfNeeded(tabId: number): Promise<boolean> {
+  try {
+    // First check if it's already loaded
+    const alreadyLoaded = await waitForContentScript(tabId, 100);
+    if (alreadyLoaded) {
+      return true;
+    }
+
+    // Get tab info to check if injection is possible
+    const tab = await chrome.tabs.get(tabId);
+    const url = tab.url || '';
+
+    // Cannot inject into restricted pages
+    if (url.startsWith('chrome://') ||
+        url.startsWith('chrome-extension://') ||
+        url.startsWith('about:') ||
+        url === 'chrome://newtab/' ||
+        url === '') {
+      console.log('[Background] Cannot inject into restricted page:', url);
+      return false;
+    }
+
+    console.log('[Background] Injecting content script into tab', tabId);
+
+    // Inject the content script (use the loader file from manifest)
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files: ['assets/index.ts-loader-DvRpSkcy.js'], // Content script loader
+    });
+
+    console.log('[Background] Content script injected successfully');
+    return true;
+  } catch (error) {
+    console.error('[Background] Failed to inject content script:', error);
+    return false;
+  }
+}
+
 function waitForTabLoad(tabId: number): Promise<void> {
   return new Promise((resolve) => {
     let resolved = false;
@@ -365,7 +438,7 @@ function sleep(ms: number): Promise<void> {
 }
 
 /**
- * Capture screenshot of the visible tab
+ * Capture screenshot of the visible tab with GPU-accelerated compression
  * Returns base64 jpeg data URL or undefined if capture fails
  */
 async function captureScreenshot(tabId: number): Promise<string | undefined> {
@@ -377,14 +450,49 @@ async function captureScreenshot(tabId: number): Promise<string | undefined> {
       return undefined;
     }
 
-    // Capture the visible tab as jpeg (smaller than png)
+    // Capture the visible tab as jpeg
     const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, {
       format: 'jpeg',
-      quality: 60, // Lower quality for smaller size
+      quality: 85, // Higher quality, we'll compress with GPU
     });
 
-    console.log('[Background] Screenshot captured, size:', Math.round(dataUrl.length / 1024), 'KB');
-    return dataUrl;
+    const originalSize = Math.round(dataUrl.length / 1024);
+    console.log('[Background] Screenshot captured, original size:', originalSize, 'KB');
+
+    // GPU-accelerated compression and downscaling
+    try {
+      // Dynamic import to avoid loading in service worker context
+      const { imageProcessor } = await import('../shared/image-processor');
+
+      // Initialize GPU processor if not already done
+      if (!await imageProcessor.initialize()) {
+        console.warn('[Background] GPU not available, using original screenshot');
+        return dataUrl;
+      }
+
+      // Process with GPU (downscale + compress)
+      const processed = await imageProcessor.processImage(dataUrl, {
+        maxWidth: 1280,
+        maxHeight: 720,
+        quality: 0.7,
+        format: 'jpeg',
+      });
+
+      const newSize = Math.round(processed.processedSize / 1024);
+      const ratio = processed.compressionRatio;
+
+      console.log('[Background] Screenshot compressed:', {
+        original: originalSize + ' KB',
+        compressed: newSize + ' KB',
+        ratio: ratio.toFixed(2) + 'x',
+        time: processed.processingTime.toFixed(1) + 'ms',
+      });
+
+      return processed.dataUrl;
+    } catch (error) {
+      console.warn('[Background] GPU compression failed, using original:', error);
+      return dataUrl;
+    }
   } catch (error) {
     console.warn('[Background] Failed to capture screenshot:', error);
     return undefined;
@@ -421,6 +529,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // Forward VLM progress to vision engine
     visionEngine.handleProgressUpdate(message.progress);
     sendResponse({ ok: true });
+  } else if (message.type === 'GET_STATE_MACHINE_STATUS') {
+    // Phase 2.1: Return state machine status
+    const status = stateRegistry.getStatus();
+    sendResponse({ success: true, status });
   }
   return true;
 });
@@ -434,3 +546,16 @@ chrome.runtime.onInstalled.addListener((details) => {
 });
 
 console.log('[Background] Service worker started');
+
+// ============================================================================
+// Side Panel Handler
+// ============================================================================
+
+// Open side panel when extension icon is clicked
+chrome.action.onClicked.addListener((tab) => {
+  if (tab.id) {
+    chrome.sidePanel.open({ tabId: tab.id }).catch((error) => {
+      console.error('[Background] Failed to open side panel:', error);
+    });
+  }
+});
