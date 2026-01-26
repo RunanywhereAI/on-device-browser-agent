@@ -12,6 +12,7 @@ import { ResultView } from './components/ResultView';
 import { TaskHistory } from './components/TaskHistory';
 import { ObstacleNotification, type ObstacleInfo } from './components/ObstacleNotification';
 import { StateMachineViewer } from './components/StateMachineViewer';
+import { StateMachineBuilder } from './components/StateMachineBuilder';
 import { POPUP_PORT_NAME } from '../shared/constants';
 import type { ExecutorEvent } from '../shared/types';
 
@@ -34,7 +35,7 @@ export interface Step {
 }
 
 type AppState = 'idle' | 'loading' | 'planning' | 'executing' | 'paused' | 'complete' | 'error';
-type AppTab = 'task' | 'history' | 'state-machines';
+type AppTab = 'task' | 'history' | 'state-machines' | 'builder';
 
 // ============================================================================
 // App Component
@@ -367,6 +368,12 @@ export function App(): React.ReactElement {
           >
             State Machines
           </button>
+          <button
+            className={`tab ${activeTab === 'builder' ? 'active' : ''}`}
+            onClick={() => setActiveTab('builder')}
+          >
+            Builder
+          </button>
         </div>
       )}
 
@@ -374,6 +381,7 @@ export function App(): React.ReactElement {
         {state === 'idle' && activeTab === 'task' && <TaskInput onSubmit={handleSubmitTask} />}
         {state === 'idle' && activeTab === 'history' && <TaskHistory />}
         {state === 'idle' && activeTab === 'state-machines' && <StateMachineViewer />}
+        {state === 'idle' && activeTab === 'builder' && <StateMachineBuilder />}
 
         {state === 'loading' && (
           <>
