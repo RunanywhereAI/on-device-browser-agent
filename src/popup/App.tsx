@@ -11,6 +11,7 @@ import { ModelStatus } from './components/ModelStatus';
 import { ResultView } from './components/ResultView';
 import { TaskHistory } from './components/TaskHistory';
 import { ObstacleNotification, type ObstacleInfo } from './components/ObstacleNotification';
+import { StateMachineViewer } from './components/StateMachineViewer';
 import { POPUP_PORT_NAME } from '../shared/constants';
 import type { ExecutorEvent } from '../shared/types';
 
@@ -33,7 +34,7 @@ export interface Step {
 }
 
 type AppState = 'idle' | 'loading' | 'planning' | 'executing' | 'paused' | 'complete' | 'error';
-type AppTab = 'task' | 'history';
+type AppTab = 'task' | 'history' | 'state-machines';
 
 // ============================================================================
 // App Component
@@ -360,12 +361,19 @@ export function App(): React.ReactElement {
           >
             History
           </button>
+          <button
+            className={`tab ${activeTab === 'state-machines' ? 'active' : ''}`}
+            onClick={() => setActiveTab('state-machines')}
+          >
+            State Machines
+          </button>
         </div>
       )}
 
       <main className="main">
         {state === 'idle' && activeTab === 'task' && <TaskInput onSubmit={handleSubmitTask} />}
         {state === 'idle' && activeTab === 'history' && <TaskHistory />}
+        {state === 'idle' && activeTab === 'state-machines' && <StateMachineViewer />}
 
         {state === 'loading' && (
           <>

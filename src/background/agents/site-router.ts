@@ -9,6 +9,7 @@
 import type { DOMState, NavigatorOutput, AgentContext, AgentStep } from '../../shared/types';
 import { AmazonStateMachine, extractSearchQuery, isAmazonTask } from './amazon-state-machine';
 import { YouTubeStateMachine } from './state-machines/youtube';
+import { stateRegistry } from './state-registry';
 
 // ============================================================================
 // Types
@@ -35,6 +36,9 @@ export class SiteRouter {
   initialize(task: string): void {
     this.amazonMachine = null;
     this.currentMachine = null;
+
+    // Reset registry (Phase 2.1)
+    stateRegistry.reset();
 
     // Initialize Amazon state machine if applicable
     if (isAmazonTask(task)) {
@@ -71,6 +75,8 @@ export class SiteRouter {
 
       if (action) {
         this.currentMachine = 'YouTube';
+        // Update registry (Phase 2.1)
+        stateRegistry.setMachineActive('youtube', true, state);
         return {
           action,
           state,
@@ -84,14 +90,20 @@ export class SiteRouter {
       const result = this.amazonMachine.process(dom, context);
       this.currentMachine = 'Amazon';
 
+      const state = this.amazonMachine.getState();
+      // Update registry (Phase 2.1)
+      stateRegistry.setMachineActive('amazon', true, state);
+
       return {
         action: result.action,
-        state: this.amazonMachine.getState(),
+        state,
         machineName: 'Amazon',
       };
     }
 
     // No state machine matched
+    // Deactivate all machines (Phase 2.1)
+    stateRegistry.reset();
     return null;
   }
 

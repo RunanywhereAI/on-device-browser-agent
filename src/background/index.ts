@@ -12,6 +12,7 @@
 import { executor } from './agents/executor';
 import { visionExecutor } from './agents/vision-executor';
 import { visionEngine } from './vision-engine';
+import { stateRegistry } from './agents/state-registry';
 import { POPUP_PORT_NAME, POST_NAVIGATION_DELAY, PAGE_LOAD_TIMEOUT } from '../shared/constants';
 import type { DOMState, ActionResult, ExecutorEvent, BackgroundMessage } from '../shared/types';
 
@@ -528,6 +529,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // Forward VLM progress to vision engine
     visionEngine.handleProgressUpdate(message.progress);
     sendResponse({ ok: true });
+  } else if (message.type === 'GET_STATE_MACHINE_STATUS') {
+    // Phase 2.1: Return state machine status
+    const status = stateRegistry.getStatus();
+    sendResponse({ success: true, status });
   }
   return true;
 });
