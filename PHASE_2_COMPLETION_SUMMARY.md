@@ -1,13 +1,11 @@
 # Phase 2 Completion Summary
 
-## Status: 🟡 2/3 COMPLETE (Phase 2.1 pending)
+## Status: ✅ **3/3 COMPLETE!**
 
-**Completed:**
+**All Phase 2 tasks completed:**
 - ✅ Phase 2.3: Obstacle Handling UI
 - ✅ Phase 2.2: Enhanced Task History
-
-**In Progress:**
-- 🔄 Phase 2.1: State Machine Viewer (architecture prepared, implementation pending)
+- ✅ Phase 2.1: State Machine Viewer
 
 ---
 
@@ -98,23 +96,58 @@ User feedback: "ability to see previous runs, the response of a run is not curre
 
 ---
 
-## Phase 2.1: State Machine Viewer (Pending)
+## Phase 2.1: State Machine Viewer ✅
+**Commit:** `306b274`
 
-**Current Status:** Architecture analyzed, ready to implement
+**Problem Solved:**
+User feedback: "there is no place to see the existing state machines" - needed visibility into state machine system
 
-**What's Needed:**
-1. State machine registry system
-2. Real-time state tracking
-3. UI component with:
-   - List of all state machines (Amazon, YouTube)
-   - Current state indicators
-   - Possible transitions
-   - Enable/disable toggles
-4. Integration with SiteRouter
+**Implementation:**
 
-**Blockers:** None - ready to implement
+**Backend:**
+- Created `state-registry.ts`: Central registry for state machines
+  * Registers all state machines (Amazon, YouTube)
+  * Tracks active/inactive status
+  * Records current state during execution
+  * Monitors state transitions
+  * Provides query API for UI
+- Integrated with `site-router.ts`:
+  * Updates registry when machines become active
+  * Sets current state on each action
+  * Resets when no machines match
+- Added message handler in `background/index.ts`:
+  * `GET_STATE_MACHINE_STATUS` endpoint
+  * Returns real-time status
 
-**Estimated Effort:** ~200 LOC, 2-3 hours
+**Frontend:**
+- Created `StateMachineViewer` component:
+  * New "State Machines" tab in popup
+  * Lists all registered state machines
+  * Active machine highlighted with pulsing green indicator
+  * Shows current state prominently (blue-bordered)
+  * Displays all possible states (highlights current)
+  * Lists URL patterns each machine handles
+  * Auto-refreshes every 2 seconds
+  * Manual refresh button
+- Comprehensive styling:
+  * Active machines glow with animation
+  * Inactive machines dimmed (70% opacity)
+  * Card-based layout with clean hierarchy
+  * Color-coded status badges
+  * Monospace font for technical details
+
+**User Impact:**
+- See which state machines are available
+- Know which machine is handling current task
+- Understand current state and possible transitions
+- Learn which URLs each machine handles
+- Visual feedback with pulsing animation
+
+**Technical Quality:**
+- ~280 LOC added (registry + component + styles)
+- Clean separation of concerns
+- Real-time updates with minimal overhead
+- Extensible architecture for future machines
 
 ---
 
