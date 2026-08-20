@@ -29,7 +29,7 @@ jobs:
           version: 9.15.1
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           # Reads the pinned version straight from .nvmrc (currently 22.12.0).
           node-version-file: '.nvmrc'
