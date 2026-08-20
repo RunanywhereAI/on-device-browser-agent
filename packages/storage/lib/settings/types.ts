@@ -31,10 +31,13 @@ export const llmProviderModelNames = {
   // best-first; automatic selection normally decides for the user, so this list
   // exists for the advanced override rather than as a menu.
   [ProviderTypeEnum.RunAnywhere]: [
-    'lfm2.5-2.6b-q4_k_m',
+    'qwen3.5-4b-q4_k_m',
+    'qwen3.5-2b-vision-q5_k_m',
+    'qwen3.5-4b-vision-iq4_xs',
+    'lfm2.5-2.6b-q5_k_m',
     'qwen3-4b-q4_k_m',
-    'lfm2.5-1.2b-q4_k_m',
-    'lfm2.5-vl-3b-q4_k_m',
+    'lfm2.5-1.2b-q5_k_m',
+    'lfm2.5-vl-3b-q5_k_m',
     'qwen3-0.6b-q4_k_m',
   ],
   [ProviderTypeEnum.OpenAI]: [

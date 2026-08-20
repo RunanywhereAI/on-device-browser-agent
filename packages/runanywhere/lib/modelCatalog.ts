@@ -19,10 +19,12 @@
  * merely "cheaper" — it buys context. Roughly, after ~0.4 GB of runtime, stack
  * and staging overhead:
  *
- *   LFM2.5-2.6B  Q5_K_M   1.94 GB weights  ->  ~1.6 GB left for KV
- *   LFM2.5-1.2B  Q5_K_M   0.79 GB weights  ->  ~2.8 GB left for KV
- *   Qwen3-4B     Q4_K_M   2.33 GB weights  ->  ~1.3 GB left for KV
- *   LFM2.5-VL-3B Q5+Q8    2.52 GB weights  ->  ~1.1 GB left, minus image tokens
+ *   Qwen3.5-4B      Q4_K_M     2.55 GB weights  ->  ~1.0 GB left for KV
+ *   Qwen3.5-2B +proj Q5_K_M    1.96 GB weights  ->  ~1.5 GB left, incl. image tokens
+ *   Qwen3.5-4B +proj IQ4_XS    3.15 GB weights  ->  ~0.4 GB left  (short tasks only)
+ *   LFM2.5-2.6B     Q5_K_M     1.94 GB weights  ->  ~1.6 GB left for KV
+ *   LFM2.5-1.2B     Q5_K_M     0.79 GB weights  ->  ~2.8 GB left for KV
+ *   Qwen3-4B        Q4_K_M     2.33 GB weights  ->  ~1.3 GB left for KV
  *
  * WHY Q5_K_M AND NOT Q4, OR A BIGGER MODEL AT Q2
  * ----------------------------------------------
@@ -34,6 +36,21 @@
  * leaves nothing for context. So: a good quant of a right-sized model.
  * (Q6_K at 2.22 GB and Liquid's quantisation-aware `QAD-Q4_0` at 1.59 GB are
  * the quality and max-context ends of the same ladder if this needs tuning.)
+ *
+ * WHY QWEN3.5 IS THE DEFAULT
+ * --------------------------
+ * Qwen3.5 (2B / 4B / 9B / 27B / 35B-A3B / 122B / 397B, Apache-2.0) is the
+ * current generation, and its small variants are **natively multimodal** —
+ * `Qwen3_5ForConditionalGeneration`, `image-text-to-text`. One set of weights
+ * answers both text and vision, with a separate mmproj projector needed only
+ * when you actually want images.
+ *
+ * That matters beyond being newer: the SDK's built-in computer-use profile is
+ * documented as covering "Microsoft Fara1.5 / Qwen3.5-VL `computer_use`", so
+ * this family plausibly shares Fara's action envelope — which would make it the
+ * first computer-use-capable model that fits in a browser at all, given Fara's
+ * own smallest GGUF is 5.5 GB. Plausibly, not provenly: see the note on the
+ * `cua` field about verifying the coordinate space before declaring a profile.
  *
  * MODELS RULED OUT ON MEASURED EVIDENCE, not on vibes
  * ---------------------------------------------------
@@ -119,6 +136,9 @@ export interface RaModelEntry {
 
 const HF = 'https://huggingface.co';
 
+export const QWEN35_4B = 'qwen3.5-4b-q4_k_m';
+export const QWEN35_4B_VISION = 'qwen3.5-4b-vision-iq4_xs';
+export const QWEN35_2B_VISION = 'qwen3.5-2b-vision-q5_k_m';
 export const LFM25_2_6B = 'lfm2.5-2.6b-q5_k_m';
 export const LFM25_2_6B_Q6 = 'lfm2.5-2.6b-q6_k';
 export const LFM25_1_2B = 'lfm2.5-1.2b-q5_k_m';
@@ -127,6 +147,84 @@ export const QWEN3_4B = 'qwen3-4b-q4_k_m';
 export const QWEN3_0_6B = 'qwen3-0.6b-q4_k_m';
 
 export const RA_MODEL_CATALOG: readonly RaModelEntry[] = [
+  {
+    id: QWEN35_4B,
+    label: 'Qwen3.5 4B',
+    files: [
+      {
+        url: `${HF}/unsloth/Qwen3.5-4B-GGUF/resolve/main/Qwen3.5-4B-Q4_K_M.gguf`,
+        role: 'primary',
+        sizeBytes: 2_740_937_888,
+      },
+    ],
+    totalBytes: 2_740_937_888,
+    contextLength: 16_384,
+    nativeContextLength: 262_144,
+    vision: false,
+    role: 'both',
+    minDeviceMemoryGb: 8,
+    notes:
+      'The default. Current-generation Qwen, Apache-2.0, and natively multimodal — the same ' +
+      'weights answer text and vision, which is what makes the computer-use path reachable at a ' +
+      'size that fits. Run here without the vision projector, so the whole budget past the ' +
+      'weights goes to context.',
+  },
+  {
+    id: QWEN35_2B_VISION,
+    label: 'Qwen3.5 2B (vision)',
+    files: [
+      {
+        url: `${HF}/unsloth/Qwen3.5-2B-GGUF/resolve/main/Qwen3.5-2B-Q5_K_M.gguf`,
+        role: 'primary',
+        sizeBytes: 1_435_238_656,
+      },
+      {
+        url: `${HF}/unsloth/Qwen3.5-2B-GGUF/resolve/main/mmproj-F16.gguf`,
+        role: 'projector',
+        sizeBytes: 668_227_264,
+      },
+    ],
+    totalBytes: 1_435_238_656 + 668_227_264,
+    contextLength: 16_384,
+    nativeContextLength: 262_144,
+    vision: true,
+    role: 'both',
+    minDeviceMemoryGb: 8,
+    experimental: true,
+    notes:
+      'The best-balanced vision option: at 1.96 GB with its projector it is the only ' +
+      'screenshot-capable model here that still leaves real KV headroom (~1.5 GB). A higher ' +
+      'quant of a smaller model beats a crushed quant of a larger one once the projector and ' +
+      'image tokens have to fit too.',
+  },
+  {
+    id: QWEN35_4B_VISION,
+    label: 'Qwen3.5 4B (vision)',
+    files: [
+      {
+        url: `${HF}/unsloth/Qwen3.5-4B-GGUF/resolve/main/Qwen3.5-4B-IQ4_XS.gguf`,
+        role: 'primary',
+        sizeBytes: 2_477_053_088,
+      },
+      {
+        url: `${HF}/unsloth/Qwen3.5-4B-GGUF/resolve/main/mmproj-F16.gguf`,
+        role: 'projector',
+        sizeBytes: 672_423_616,
+      },
+    ],
+    totalBytes: 2_477_053_088 + 672_423_616,
+    contextLength: 8_192,
+    nativeContextLength: 262_144,
+    vision: true,
+    role: 'both',
+    minDeviceMemoryGb: 16,
+    experimental: true,
+    notes:
+      'The most capable model that fits with vision, using IQ4_XS rather than Q4_K_M to buy back ' +
+      '0.24 GB for the projector. Even so 3.15 GB leaves only ~0.4 GB for KV and image tokens, so ' +
+      'expect short tasks. Qwen3.5-2B (vision) is the better default for real work; this one is ' +
+      'for measuring what the extra parameters actually buy.',
+  },
   {
     id: LFM25_2_6B,
     label: 'LFM2.5 2.6B',
@@ -144,7 +242,7 @@ export const RA_MODEL_CATALOG: readonly RaModelEntry[] = [
     role: 'both',
     minDeviceMemoryGb: 8,
     notes:
-      'The default, and the best fit for this product by some distance. Liquid post-trained it ' +
+      'The long-context alternative, and the one to try when a task runs long. Liquid post-trained it ' +
       'specifically as an agent (their own card recommends it for "agentic workloads, tool use, ' +
       'data extraction, RAG, and long-context workflows"), it is a hybrid architecture built for ' +
       'on-device use, and at 1.94 GB (Q5_K_M) it leaves substantially more of the 4 GiB budget for KV ' +

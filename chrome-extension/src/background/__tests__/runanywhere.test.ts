@@ -8,12 +8,13 @@ import {
   formatBytes,
   imageToViewport,
   LFM25_1_2B,
-  LFM25_2_6B,
+  QWEN35_4B,
   normalizedToViewport,
   RA_MODEL_CATALOG,
   selectableModels,
   type RaCapabilities,
 } from '@extension/runanywhere';
+import { llmProviderModelNames, ProviderTypeEnum } from '@extension/storage';
 
 /**
  * These cover the pure logic behind on-device inference: the coordinate maths a
@@ -147,7 +148,7 @@ describe('model catalog', () => {
   });
 
   it('resolves ids that exist and rejects ones that do not', () => {
-    expect(findModel(LFM25_2_6B)?.label).toBe('LFM2.5 2.6B');
+    expect(findModel(QWEN35_4B)?.label).toBe('Qwen3.5 4B');
     expect(findModel('definitely-not-a-model')).toBeUndefined();
   });
 });
@@ -155,14 +156,14 @@ describe('model catalog', () => {
 describe('automatic model selection', () => {
   it('prefers the agentic default on a mainstream machine', () => {
     const choice = chooseModel(caps({ deviceMemoryGb: 8 }));
-    expect(choice.model.id).toBe(LFM25_2_6B);
+    expect(choice.model.id).toBe(QWEN35_4B);
     expect(choice.constrained).toBe(false);
   });
 
   it('does not upgrade to a bigger model just because there is more RAM', () => {
     // More weights would come straight out of the KV budget, which is what
     // limits how long an agentic task can run.
-    expect(chooseModel(caps({ deviceMemoryGb: 64 })).model.id).toBe(LFM25_2_6B);
+    expect(chooseModel(caps({ deviceMemoryGb: 64 })).model.id).toBe(QWEN35_4B);
   });
 
   it('drops to a smaller model on a constrained machine and says so', () => {
@@ -182,8 +183,8 @@ describe('automatic model selection', () => {
   it('assumes a mainstream laptop when the browser reports nothing', () => {
     // navigator.deviceMemory is absent in several browsers; that must not be
     // read as "this device is tiny".
-    expect(chooseModel(null).model.id).toBe(LFM25_2_6B);
-    expect(chooseModel(caps({ deviceMemoryGb: undefined })).model.id).toBe(LFM25_2_6B);
+    expect(chooseModel(null).model.id).toBe(QWEN35_4B);
+    expect(chooseModel(caps({ deviceMemoryGb: undefined })).model.id).toBe(QWEN35_4B);
   });
 
   it('mentions the GPU only when there is one', () => {
@@ -199,5 +200,24 @@ describe('size formatting', () => {
     expect(formatBytes(1_939_744_768)).toBe('1.8 GB');
     expect(formatBytes(843_354_944)).toBe('804 MB');
     expect(formatBytes(4096)).toBe('4 KB');
+  });
+});
+
+describe('storage defaults stay in step with the catalog', () => {
+  it('lists only model ids that actually exist', () => {
+    // These two lists live in different packages and drifted once already:
+    // storage kept advertising q4_k_m ids after the catalog moved to q5_k_m, so
+    // picking one from the options page would have resolved to nothing.
+    const ids = new Set(RA_MODEL_CATALOG.map(entry => entry.id));
+    for (const advertised of llmProviderModelNames[ProviderTypeEnum.RunAnywhere]) {
+      expect(ids.has(advertised), `storage advertises unknown model '${advertised}'`).toBe(true);
+    }
+  });
+
+  it('advertises every catalog model, so none is unreachable from the UI', () => {
+    const advertised = new Set<string>(llmProviderModelNames[ProviderTypeEnum.RunAnywhere]);
+    for (const entry of RA_MODEL_CATALOG) {
+      expect(advertised.has(entry.id), `catalog model '${entry.id}' is not advertised`).toBe(true);
+    }
   });
 });

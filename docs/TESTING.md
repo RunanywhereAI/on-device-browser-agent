@@ -10,13 +10,13 @@ model drive a browser.
 |---|---|---|
 | `pnpm lint` | 14/14 | No lint errors. Also enforced in CI as a real gate. |
 | `pnpm type-check` | 14/14 | Every workspace compiles, including the SDK boundary. |
-| `pnpm -F chrome-extension test` | 86 tests / 6 files | Coordinate maths, model-selection rules, catalog invariants, history compaction, and a simulated task through the real action layer. |
+| `pnpm -F chrome-extension test` | 88 tests / 6 files | Coordinate maths, model-selection rules, catalog invariants, storage/catalog drift, history compaction, and a simulated task through the real action layer. |
 | `pnpm build` | 9/9 | A loadable `dist/` is produced, manifest included. |
 | `node tools/smoke/smoke-extension.mjs` | preflight passes | Manifest is v3, every path it references exists, no remotely-hosted executable code. |
 
 **None of that proves the product works.** Not one of those gates runs a model.
 The simulated task drives real action dispatch against a fake browser, so it
-proves the plumbing; it says nothing about whether a 2.6B model picks sensible
+proves the plumbing; it says nothing about whether a 4B model picks sensible
 actions on a real page. That is the open question, and it needs a person.
 
 ## The one automation gap
@@ -57,7 +57,7 @@ a hang. Worth knowing which case you are in before judging quality.
 
 ### 3. First run downloads a model
 
-The default is **LFM2.5-2.6B at Q5_K_M, 1.94 GB**, fetched from Hugging Face and
+The default is **Qwen3.5-4B at Q4_K_M, 2.55 GB**, fetched from Hugging Face and
 cached in OPFS. Things to watch:
 
 - Progress should show named phases (`Starting…` → bytes/rate/ETA → `Checking
@@ -101,7 +101,8 @@ The useful distinction is *which layer* failed:
 
 - **Did it pick a bad action?** (clicked the wrong thing, gave up early, looped)
   That is model quality. Note the task, the step, and what it chose instead.
-  Trying LFM2.5-2.6B vs Qwen3-4B on the same task is the informative comparison.
+  Trying Qwen3.5-4B vs LFM2.5-2.6B on the same task is the informative
+  comparison — that is the one that should decide the default.
 - **Did the action fail to execute?** (click did nothing, text did not land)
   That is the browser layer. The service-worker log names the action and its
   arguments.
@@ -115,8 +116,10 @@ The useful distinction is *which layer* failed:
 
 Text/DOM is the default path. Vision is opt-in and **experimental**.
 
-To try it: select `lfm2.5-vl-3b-q5_k_m` (2.52 GB with its projector) and enable
-`useVision` in general settings. That combination switches the action set from
+To try it: select `qwen3.5-2b-vision-q5_k_m` (1.96 GB with its projector) and
+enable `useVision` in general settings. `qwen3.5-4b-vision-iq4_xs` (3.15 GB) is
+more capable but leaves very little room for KV — expect short tasks only.
+`lfm2.5-vl-3b-q5_k_m` remains as an alternative. That combination switches the action set from
 element indices to pixel coordinates, because a model shown only a screenshot has
 no idea what "index 12" refers to.
 
@@ -175,6 +178,7 @@ says which is better.
   different models would evict on every planning turn.
 - Models above ~3.5 GB cannot run at all. Weights and KV cache share one 4 GiB
   wasm32 heap. This is why Ornith-1.5-9B, Fara1.5-9B and anything Qwen3.6-sized
-  are not options, however good they are.
+  are not options, however good they are — and why the catalog stops at
+  Qwen3.5-4B rather than the 9B/27B of the same family.
 - The SDK is consumed from vendored tarballs in `vendor/runanywhere/` until those
   packages are published.

@@ -21,16 +21,34 @@ Selected automatically at first run; the options page can override.
 
 | Model | Quant | Download | Context | Role |
 |---|---|---|---|---|
-| **LFM2.5-2.6B** | Q5_K_M | **1.94 GB** | 32k configured (131k native) | **Default** |
+| **Qwen3.5-4B** | Q4_K_M | **2.55 GB** | 16k configured (262k native) | **Default** |
+| Qwen3.5-2B (vision) | Q5_K_M + F16 mmproj | 1.96 GB | 16k configured | Vision — best balance |
+| Qwen3.5-4B (vision) | IQ4_XS + F16 mmproj | 3.15 GB | 8k configured | Vision — most capable, very tight |
+| LFM2.5-2.6B | Q5_K_M | 1.94 GB | 32k configured (131k native) | Long-context alternative |
 | LFM2.5-1.2B | Q5_K_M | 0.79 GB | 32k configured (131k native) | Fast start |
-| Qwen3-4B | Q4_K_M | 2.33 GB | 16k configured (32k native) | Alternative |
+| Qwen3-4B | Q4_K_M | 2.33 GB | 16k configured (32k native) | Previous-gen comparison |
 | Qwen3-0.6B | Q4_K_M | 0.37 GB | 4k | CI only — never auto-selected |
-| LFM2.5-VL-3B | Q5_K_M + Q8_0 mmproj | 2.52 GB | 16k configured | Vision, experimental |
+| LFM2.5-VL-3B | Q5_K_M + Q8_0 mmproj | 2.52 GB | 16k configured | Vision alternative |
 
 Every size was measured from the live download URL, not estimated. The exact
 URLs are in `packages/runanywhere/lib/modelCatalog.ts`.
 
-### Why LFM2.5-2.6B is the default
+### Why Qwen3.5-4B is the default
+
+- **It is the current generation.** Qwen3.5 ships 2B / 4B / 9B / 27B /
+  35B-A3B / 122B / 397B under Apache-2.0.
+- **Its small variants are natively multimodal** —
+  `Qwen3_5ForConditionalGeneration`, `image-text-to-text`. One set of weights
+  answers text *and* vision; the mmproj projector is only needed when you
+  actually want to send images. So the same family covers both paths.
+- **It is plausibly computer-use capable at a size that fits.** The SDK's
+  built-in CUA profile is documented as covering "Microsoft Fara1.5 /
+  Qwen3.5-VL `computer_use`", which suggests a shared action envelope. That
+  matters because Fara's own smallest GGUF is 5.5 GB and cannot run here at all.
+  Plausibly, not provenly — see "Adding a computer-use model" below.
+- Run without the projector it is 2.55 GB, leaving ~1.0 GB for KV.
+
+### Why LFM2.5-2.6B is still here
 
 - Liquid post-trained it **as an agent**. Their model card recommends it for
   "agentic workloads, tool use, data extraction, RAG, and long-context
@@ -152,17 +170,19 @@ first real profile.
 In this order, because each adds one failure mode:
 
 1. **Qwen3-0.6B** (0.37 GB) — proves the pipeline downloads, loads, and
-   generates. It is deliberately too weak to navigate well; do not judge quality
-   here, only plumbing.
+   generates. Deliberately too weak to navigate well; judge plumbing, not quality.
 2. **LFM2.5-1.2B** (0.79 GB) — the fast-start path a real user might pick.
-3. **LFM2.5-2.6B** (1.94 GB) — the actual default. This is the one whose task
-   success matters.
-4. **Qwen3-4B** (2.33 GB) — the comparison. Same tasks as step 3; the
-   interesting question is whether the extra parameters beat the extra context.
-5. **LFM2.5-VL-3B** (2.52 GB) — vision, only after the DOM path is understood.
+3. **Qwen3.5-4B** (2.55 GB) — the actual default. This is the one whose task
+   success matters most.
+4. **LFM2.5-2.6B** (1.94 GB) — the comparison that should decide the default.
+   Same tasks as step 3. Qwen3.5-4B is newer and multimodal; LFM2.5-2.6B is
+   agentic-post-trained with a dedicated tool-call parser in commons and ~0.6 GB
+   more KV headroom. Which wins on real multi-step tasks is an open question.
+5. **Qwen3.5-2B (vision)** (1.96 GB) — the vision path, once the DOM path is
+   understood.
 
-The comparison in step 4 is the one that decides the default. If Qwen3-4B wins
-on real multi-step tasks despite less KV headroom, the default should change —
-the reasoning above is sound but it is reasoning, not measurement.
+Step 4 matters most. The reasoning for Qwen3.5-4B is sound but it is reasoning,
+not measurement: if LFM2.5-2.6B completes more long tasks, the default should
+change. Nothing here has been measured on real pages yet.
 
 See [`TESTING.md`](TESTING.md) for how to run these and where the logs are.
