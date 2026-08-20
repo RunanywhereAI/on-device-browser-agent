@@ -38,16 +38,22 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # chrome-extension currently has 13 pre-existing ESLint errors (no-explicit-any /
-      # no-unused-vars / no-undef in src/background/agent/helper.ts,
-      # src/background/browser/dom/history/view.ts and public/buildDomTree.js) that predate
-      # this workflow and sit outside its scope to fix. The step still runs on every build so
-      # regressions are visible in the log and step annotations, but it's non-blocking for now
-      # so this first CI is green on the current tree. Drop `continue-on-error` once that
-      # existing debt is cleaned up so lint becomes a real gate.
+      # A real gate. The 13 pre-existing errors this repo shipped with (unused predicates,
+      # untyped ChatLlama boundaries, a DevTools-only global in buildDomTree.js) have been
+      # fixed or given a justified, narrowly-scoped exemption, so lint is clean and a new
+      # error should fail the build rather than scroll past in a log.
       - name: Lint
         run: pnpm lint
-        continue-on-error: true
+
+      # `pnpm lint` passes --fix, so it can go green by rewriting files rather than by the
+      # code being correct. Fail if it changed anything: in CI a fix is a finding, not a fix.
+      - name: Fail if lint rewrote files
+        run: |
+          if ! git diff --quiet; then
+            echo "::error::Lint modified files. Run 'pnpm lint' locally and commit the result."
+            git --no-pager diff --stat
+            exit 1
+          fi
 
       - name: Type check
         run: pnpm type-check

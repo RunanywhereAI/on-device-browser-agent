@@ -20,8 +20,8 @@
   },
   "dependencies": {
     "@extension/runanywhere": "workspace:*",
-    "@runanywhere/web": "file:../../../runanywhere-sdks/bindings/web/dist/sdk-web/runanywhere-web-0.20.24.tgz",
-    "@runanywhere/web-llamacpp": "file:../../../runanywhere-sdks/bindings/web/dist/sdk-web/runanywhere-web-llamacpp-0.20.24.tgz",
+    "@runanywhere/web": "file:../../vendor/runanywhere/runanywhere-web-0.20.24.tgz",
+    "@runanywhere/web-llamacpp": "file:../../vendor/runanywhere/runanywhere-web-llamacpp-0.20.24.tgz",
     "@extension/shared": "workspace:*",
     "@extension/storage": "workspace:*"
   },

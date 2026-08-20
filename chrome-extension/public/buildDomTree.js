@@ -1,3 +1,9 @@
+/* eslint-disable no-undef -- `getEventListeners` is a DevTools-injected global. The code
+ * below feature-detects it with `typeof` before use, which is the correct guard; ESLint
+ * cannot see that it may exist at runtime. */
+/* eslint-disable @typescript-eslint/no-unused-vars -- `debugMode` is part of this script's
+ * documented argument contract. Removing or renaming it to satisfy the linter would break
+ * any caller that passes it. */
 window.buildDomTree = (
   args = {
     showHighlightElements: true,

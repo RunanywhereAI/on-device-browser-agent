@@ -23,9 +23,10 @@ import {
   type RaGenerateOptions,
   type RaGenerationResult,
   type RaModelStateEntry,
+  type RaResponse,
 } from '@extension/runanywhere';
 
-type Emit = (response: import('@extension/runanywhere').RaResponse) => void;
+type Emit = (response: RaResponse) => void;
 
 let initialised: Promise<void> | null = null;
 

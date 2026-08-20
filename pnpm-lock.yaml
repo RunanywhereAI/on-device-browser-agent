@@ -370,11 +370,11 @@ importers:
         specifier: workspace:*
         version: link:../../packages/storage
       '@runanywhere/web':
-        specifier: file:../../../runanywhere-sdks/bindings/web/dist/sdk-web/runanywhere-web-0.20.24.tgz
-        version: file:../runanywhere-sdks/bindings/web/dist/sdk-web/runanywhere-web-0.20.24.tgz
+        specifier: file:../../vendor/runanywhere/runanywhere-web-0.20.24.tgz
+        version: file:vendor/runanywhere/runanywhere-web-0.20.24.tgz
       '@runanywhere/web-llamacpp':
-        specifier: file:../../../runanywhere-sdks/bindings/web/dist/sdk-web/runanywhere-web-llamacpp-0.20.24.tgz
-        version: file:../runanywhere-sdks/bindings/web/dist/sdk-web/runanywhere-web-llamacpp-0.20.24.tgz(@runanywhere/web@file:../runanywhere-sdks/bindings/web/dist/sdk-web/runanywhere-web-0.20.24.tgz)
+        specifier: file:../../vendor/runanywhere/runanywhere-web-llamacpp-0.20.24.tgz
+        version: file:vendor/runanywhere/runanywhere-web-llamacpp-0.20.24.tgz(@runanywhere/web@file:vendor/runanywhere/runanywhere-web-0.20.24.tgz)
     devDependencies:
       '@extension/hmr':
         specifier: workspace:*
@@ -428,12 +428,18 @@ importers:
       '@extension/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
+      '@extension/runanywhere':
+        specifier: workspace:*
+        version: link:../../packages/runanywhere
       '@extension/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       '@extension/storage':
         specifier: workspace:*
         version: link:../../packages/storage
+      '@extension/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       react-icons:
         specifier: ^5.0.0
         version: 5.5.0(react@18.3.1)
@@ -950,8 +956,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@runanywhere/web-llamacpp@file:../runanywhere-sdks/bindings/web/dist/sdk-web/runanywhere-web-llamacpp-0.20.24.tgz':
-    resolution: {integrity: sha512-9cAH2P83fR87mcCa9g7W6FzUcy6lPok8/Nl9NWjquJwPQTLguZ7fX9AiCaK6Qqs6HamtNxJkeu/pEf8DhRp4iA==, tarball: file:../runanywhere-sdks/bindings/web/dist/sdk-web/runanywhere-web-llamacpp-0.20.24.tgz}
+  '@runanywhere/web-llamacpp@file:vendor/runanywhere/runanywhere-web-llamacpp-0.20.24.tgz':
+    resolution: {integrity: sha512-9cAH2P83fR87mcCa9g7W6FzUcy6lPok8/Nl9NWjquJwPQTLguZ7fX9AiCaK6Qqs6HamtNxJkeu/pEf8DhRp4iA==, tarball: file:vendor/runanywhere/runanywhere-web-llamacpp-0.20.24.tgz}
     version: 0.20.24
     engines: {node: '>=22.12.0'}
     peerDependencies:
@@ -959,8 +965,8 @@ packages:
     bundledDependencies:
       - '@runanywhere/proto-ts'
 
-  '@runanywhere/web@file:../runanywhere-sdks/bindings/web/dist/sdk-web/runanywhere-web-0.20.24.tgz':
-    resolution: {integrity: sha512-ZdRkvOwwogycV8A5aZG8ZKEZCFeI00/J5C7Esy8qF+hXWSB0LyausiH752hu+Q5JxdBCaHqHcnk0ePZoiD1TKA==, tarball: file:../runanywhere-sdks/bindings/web/dist/sdk-web/runanywhere-web-0.20.24.tgz}
+  '@runanywhere/web@file:vendor/runanywhere/runanywhere-web-0.20.24.tgz':
+    resolution: {integrity: sha512-ZdRkvOwwogycV8A5aZG8ZKEZCFeI00/J5C7Esy8qF+hXWSB0LyausiH752hu+Q5JxdBCaHqHcnk0ePZoiD1TKA==, tarball: file:vendor/runanywhere/runanywhere-web-0.20.24.tgz}
     version: 0.20.24
     engines: {node: '>=22.12.0'}
     bundledDependencies:
@@ -4130,12 +4136,12 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.53.3':
     optional: true
 
-  '@runanywhere/web-llamacpp@file:../runanywhere-sdks/bindings/web/dist/sdk-web/runanywhere-web-llamacpp-0.20.24.tgz(@runanywhere/web@file:../runanywhere-sdks/bindings/web/dist/sdk-web/runanywhere-web-0.20.24.tgz)':
+  '@runanywhere/web-llamacpp@file:vendor/runanywhere/runanywhere-web-llamacpp-0.20.24.tgz(@runanywhere/web@file:vendor/runanywhere/runanywhere-web-0.20.24.tgz)':
     dependencies:
       '@bufbuild/protobuf': 2.14.0
-      '@runanywhere/web': file:../runanywhere-sdks/bindings/web/dist/sdk-web/runanywhere-web-0.20.24.tgz
+      '@runanywhere/web': file:vendor/runanywhere/runanywhere-web-0.20.24.tgz
 
-  '@runanywhere/web@file:../runanywhere-sdks/bindings/web/dist/sdk-web/runanywhere-web-0.20.24.tgz':
+  '@runanywhere/web@file:vendor/runanywhere/runanywhere-web-0.20.24.tgz':
     dependencies:
       '@bufbuild/protobuf': 2.14.0
       long: 5.3.2

@@ -26,6 +26,14 @@ import { ExecutionState } from '../../event/types';
  * actions. That needs the real weights and is the part a human has to watch.
  */
 
+/** Fetch an action by name, failing usefully if the registry does not have it. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function action(actions: Map<string, any>, name: string) {
+  const found = actions.get(name);
+  if (!found) throw new Error(`No action named '${name}' is registered. Registered: ${[...actions.keys()].join(', ')}`);
+  return found;
+}
+
 interface RecordedCall {
   readonly method: string;
   readonly args: readonly unknown[];
@@ -214,7 +222,7 @@ describe('simulated task: DOM (index) mode', () => {
     const builder = new ActionBuilder(context, {} as any);
     const actions = new Map(builder.buildDefaultActions().map(action => [action.name(), action]));
 
-    await actions.get('go_to_url').call({ intent: 'Open Wikipedia', url: 'https://en.wikipedia.org' });
+    await action(actions, 'go_to_url').call({ intent: 'Open Wikipedia', url: 'https://en.wikipedia.org' });
 
     expect(calls[0].method).toBe('navigateTo');
     expect(calls[0].args[0]).toBe('https://en.wikipedia.org');

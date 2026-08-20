@@ -12,7 +12,11 @@ import { ChatRunAnywhere } from '@extension/runanywhere';
 
 const maxTokens = 1024 * 4;
 
-// Custom ChatLlama class to handle Llama API response format
+// Custom ChatLlama class to handle Llama API response format.
+// The Llama API returns a shape LangChain does not model, and this class exists purely to
+// translate it, so `any` is the accurate annotation for those boundaries rather than a
+// fictional interface. Scoped to this class so nothing else inherits the exemption.
+/* eslint-disable @typescript-eslint/no-explicit-any */
 class ChatLlama extends ChatOpenAI {
   constructor(args: any) {
     super(args);
@@ -64,6 +68,7 @@ class ChatLlama extends ChatOpenAI {
     }
   }
 }
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 // O series models or GPT-5 models that support reasoning
 function isOpenAIReasoningModel(modelName: string): boolean {
@@ -74,27 +79,6 @@ function isOpenAIReasoningModel(modelName: string): boolean {
   return (
     modelNameWithoutProvider.startsWith('o') ||
     (modelNameWithoutProvider.startsWith('gpt-5') && !modelNameWithoutProvider.startsWith('gpt-5-chat'))
-  );
-}
-
-// Function to check if a model is an Anthropic Opus model
-function isAnthropicOpusModel(modelName: string): boolean {
-  // Extract the model name without provider prefix if present
-  let modelNameWithoutProvider = modelName;
-  if (modelName.startsWith('anthropic/')) {
-    modelNameWithoutProvider = modelName.substring(10);
-  }
-  return modelNameWithoutProvider.startsWith('claude-opus');
-}
-
-// check if a model is sonnet-4-5 or haiku-4-5
-function isAnthropic4_5Model(modelName: string): boolean {
-  let modelNameWithoutProvider = modelName;
-  if (modelName.startsWith('anthropic/')) {
-    modelNameWithoutProvider = modelName.substring(10);
-  }
-  return (
-    modelNameWithoutProvider.startsWith('claude-sonnet-4-5') || modelNameWithoutProvider.startsWith('claude-haiku-4-5')
   );
 }
 
