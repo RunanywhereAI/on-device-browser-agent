@@ -23,7 +23,9 @@
     "webextension-polyfill": "^0.12.0",
     "@extension/shared": "workspace:*",
     "@extension/storage": "workspace:*",
-    "@extension/i18n": "workspace:*"
+    "@extension/i18n": "workspace:*",
+    "@extension/ui": "workspace:*",
+    "@extension/runanywhere": "workspace:*"
   },
   "devDependencies": {
     "@extension/tailwindcss-config": "workspace:*",
