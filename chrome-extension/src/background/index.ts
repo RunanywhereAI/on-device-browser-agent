@@ -19,6 +19,7 @@ import { SpeechToTextService } from './services/speechToText';
 import { injectBuildDomTreeScripts } from './browser/dom/service';
 import { analytics } from './services/analytics';
 import { findModel, registerOffscreenPortListener } from '@extension/runanywhere';
+import { seedOnDeviceDefaults } from './setupOnDevice';
 
 const logger = createLogger('background');
 
@@ -80,6 +81,13 @@ chrome.runtime.onMessage.addListener(() => {
 // outlives us and reconnects on its own, and a listener registered later would
 // miss that connection.
 registerOffscreenPortListener();
+
+// Arrive at a working default rather than a configuration screen. Runs on
+// install and update; it never overwrites an existing choice, so an update
+// cannot undo the user's preference.
+chrome.runtime.onInstalled.addListener(() => {
+  void seedOnDeviceDefaults();
+});
 
 chrome.runtime.onConnect.addListener(port => {
   if (port.name === 'side-panel-connection') {

@@ -1,5 +1,6 @@
 import { createRoot } from 'react-dom/client';
 import '@src/index.css';
+import '@extension/ui/dist/global.css';
 import SidePanel from '@src/SidePanel';
 
 function init() {
