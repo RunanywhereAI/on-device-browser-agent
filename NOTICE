@@ -1,0 +1,54 @@
+RunAnywhere Browser
+Copyright (c) 2026 RunAnywhere AI
+
+This product includes software developed by the Nanobrowser project.
+
+--------------------------------------------------------------------------------
+Nanobrowser
+--------------------------------------------------------------------------------
+
+Portions of this software are derived from Nanobrowser
+(https://github.com/nanobrowser/nanobrowser), Copyright (c) the Nanobrowser
+authors, licensed under the Apache License, Version 2.0. A copy of that license
+is included in the LICENSE file at the root of this repository.
+
+Nanobrowser's full commit history is preserved in this repository's git history,
+which was merged in rather than squashed, so the provenance of every inherited
+file remains inspectable via `git log` and `git blame`.
+
+Upstream is tracked as the `upstream` git remote:
+
+    git remote add upstream https://github.com/nanobrowser/nanobrowser.git
+    git fetch upstream && git merge upstream/master
+
+--------------------------------------------------------------------------------
+Modifications
+--------------------------------------------------------------------------------
+
+This project modifies Nanobrowser substantially. The significant changes are:
+
+  * On-device inference. Adds a RunAnywhere Web SDK backend
+    (WebAssembly + WebGPU, running inside a Chrome offscreen document) as the
+    default model provider, so browser automation runs entirely on the user's
+    machine with no API key and no cloud service. The upstream cloud providers
+    remain available.
+
+  * Rebranding. Extension name, icons, description, and user-facing copy are
+    RunAnywhere's rather than Nanobrowser's.
+
+  * User interface. The side panel and options pages are substantially rewritten
+    against the RunAnywhere design system.
+
+  * Reliability and browser control. Changes to conversation-history management
+    and to the browser input/perception layer.
+
+Individual modified files are not annotated inline; the merged git history is the
+authoritative record of what changed relative to upstream.
+
+--------------------------------------------------------------------------------
+Third-party dependencies
+--------------------------------------------------------------------------------
+
+This software depends on additional third-party packages, each under its own
+license. See the dependency manifests (package.json / pnpm-lock.yaml) and the
+installed packages' own license files for details.

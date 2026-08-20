@@ -29,3 +29,6 @@ chrome-extension/public/manifest.json
 .vscode
 .cursor
 *.py
+
+# Upstream reference checkouts, kept locally for analysis only (never vendored)
+EXTERNAL/
