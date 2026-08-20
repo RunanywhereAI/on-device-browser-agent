@@ -132,6 +132,39 @@ The thing most likely to be wrong here is coordinate scaling on a retina display
 into). That conversion is unit-tested in both directions, but if clicks land
 consistently up-and-left of their target, that is the suspect.
 
+## Computer-use (CUA) models
+
+The SDK has a CUA layer — a system-prompt builder plus an action parser with an
+18-verb vocabulary (click/type/scroll/drag/navigate/wait/ask/terminate…) that
+rescales the model's coordinates into your viewport.
+
+It shipped with exactly one profile, for Microsoft Fara, in a compile-time C
+array. Fara does not fit in a browser (its smallest GGUF is the 9B at ~5.5 GB),
+so that profile was effectively unreachable here. Profiles can now be registered
+at runtime instead:
+
+```ts
+RunAnywhere.CUA.registerProfile('my-vlm', systemPromptForThatModel, {
+  width: 1280,
+  height: 720, // the space the model was TRAINED to answer in
+});
+RunAnywhere.CUA.listProfiles();
+```
+
+Two things to be careful about, because both fail silently rather than loudly:
+
+- **The coordinate space must be the one the model was trained on.** Everything
+  downstream rescales from it, so a wrong number does not error — it just puts
+  every click in the wrong place, consistently.
+- **The prompt must match what the model actually emits.** A plausible-looking
+  prompt for a model that was never trained on that envelope produces output the
+  parser cannot read. This is why no extra built-in profiles were added: an
+  unverified profile is worse than no profile.
+
+Our own `click_at` / `type_at` / `scroll_at` actions do not depend on any of
+this and work with any vision model, so both paths stay open until measurement
+says which is better.
+
 ## Known limitations, stated plainly
 
 - Chrome and Edge only. Firefox and Safari cannot run this — it depends on
