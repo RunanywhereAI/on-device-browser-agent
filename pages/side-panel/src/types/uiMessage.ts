@@ -1,4 +1,4 @@
-import type { Actors, type Message } from '@extension/storage';
+import type { Actors, Message } from '@extension/storage';
 
 /**
  * The chat transcript used to be a flat `Message[]` where an in-flight step
