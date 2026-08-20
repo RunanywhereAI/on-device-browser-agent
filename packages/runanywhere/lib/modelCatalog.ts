@@ -84,6 +84,27 @@ export interface RaModelEntry {
   /** What the model itself is trained to handle, for reference. */
   readonly nativeContextLength: number;
   readonly vision: boolean;
+  /**
+   * Computer-use profile, for a model trained to drive a UI from a screenshot.
+   *
+   * Declaring this is the whole of what it takes to add a computer-use model:
+   * the catalog seeder registers the profile with the SDK at boot, so nothing
+   * else has to know the model is special. Omit it for an ordinary model.
+   *
+   * Both fields have to be right and neither fails loudly if it is not. The
+   * prompt must be the envelope the model was actually trained to emit, or the
+   * parser reads nothing; `modelSpace` must be the coordinate space it answers
+   * in, because every coordinate is rescaled from it — a wrong number does not
+   * error, it just puts every click in the same wrong place.
+   */
+  readonly cua?: {
+    /** Profile id registered with the SDK. Conventionally the model id. */
+    readonly profileId: string;
+    /** The system prompt that gives the model its action vocabulary. */
+    readonly systemPrompt: string;
+    /** The coordinate space the model was trained to answer in. */
+    readonly modelSpace: { readonly width: number; readonly height: number };
+  };
   readonly role: RaModelRole;
   /**
    * Rough floor for comfortable operation. Advisory only — the real decision
@@ -223,6 +244,11 @@ export const RA_MODEL_CATALOG: readonly RaModelEntry[] = [
       'the DOM path on real hardware before it is offered by default.',
   },
 ];
+
+/** Models that declare a computer-use profile. */
+export function cuaModels(): readonly RaModelEntry[] {
+  return RA_MODEL_CATALOG.filter(entry => entry.cua !== undefined);
+}
 
 export function findModel(id: string): RaModelEntry | undefined {
   return RA_MODEL_CATALOG.find(entry => entry.id === id);

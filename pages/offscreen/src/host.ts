@@ -66,6 +66,7 @@ export async function initEngine(): Promise<void> {
     });
 
     registerCatalog();
+    registerCuaProfiles();
   })().catch(error => {
     // Let the next attempt retry rather than caching a permanent failure.
     initialised = null;
@@ -114,6 +115,31 @@ function registerCatalog(): void {
     } catch (error) {
       // Already registered is fine; anything else is worth surfacing in logs.
       console.debug('[offscreen] model registration skipped', entry.id, error);
+    }
+  }
+}
+
+/**
+ * Register the computer-use profile of every model that declares one.
+ *
+ * This is what makes adding a computer-use model a one-line catalog change
+ * rather than a code change: the model declares its prompt and coordinate
+ * space, and this loop tells the SDK about it at boot. Nothing downstream needs
+ * to know which models are special.
+ *
+ * Registration is cheap and idempotent — re-registering an id replaces it — so
+ * running this on every boot is fine and keeps the SDK in step with the catalog
+ * even after an extension update changed a prompt.
+ */
+function registerCuaProfiles(): void {
+  for (const entry of RA_MODEL_CATALOG) {
+    if (!entry.cua) continue;
+    try {
+      RunAnywhere.CUA.registerProfile(entry.cua.profileId, entry.cua.systemPrompt, entry.cua.modelSpace);
+    } catch (error) {
+      // A failed profile only disables computer-use for that one model; the
+      // model still works through the DOM path, so this must not be fatal.
+      console.warn('[offscreen] could not register CUA profile', entry.cua.profileId, error);
     }
   }
 }

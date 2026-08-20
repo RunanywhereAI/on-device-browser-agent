@@ -394,6 +394,9 @@ importers:
       '@extension/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
+      '@extension/runanywhere':
+        specifier: workspace:*
+        version: link:../../packages/runanywhere
       '@extension/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -966,7 +969,7 @@ packages:
       - '@runanywhere/proto-ts'
 
   '@runanywhere/web@file:vendor/runanywhere/runanywhere-web-0.20.24.tgz':
-    resolution: {integrity: sha512-ZdRkvOwwogycV8A5aZG8ZKEZCFeI00/J5C7Esy8qF+hXWSB0LyausiH752hu+Q5JxdBCaHqHcnk0ePZoiD1TKA==, tarball: file:vendor/runanywhere/runanywhere-web-0.20.24.tgz}
+    resolution: {integrity: sha512-jJt7588CcTlbADhL/w4UKiQqoivka8IcLEdl3K8HwOBy6jVv4o+lAbtsyb+llW9SW+IhSOfSwEx7sGzgOkHxoA==, tarball: file:vendor/runanywhere/runanywhere-web-0.20.24.tgz}
     version: 0.20.24
     engines: {node: '>=22.12.0'}
     bundledDependencies:

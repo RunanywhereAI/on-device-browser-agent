@@ -59,6 +59,13 @@ Cloud providers are deliberately kept. Local inference is the default and the
 point, but nothing stops you pointing RA Browser Use at a frontier model when a task
 genuinely needs one.
 
+## Documentation
+
+- [`docs/MODELS.md`](docs/MODELS.md) — what ships, why, what was ruled out and
+  the numbers behind it, and how to add a computer-use model.
+- [`docs/TESTING.md`](docs/TESTING.md) — how to build, load and test it, where
+  the logs are, and what each automated gate does and does not prove.
+
 ## Status
 
 **Early development, not yet released.** The fork foundation is in place and the
