@@ -5,7 +5,7 @@
   },
   "app_metadata_name": {
     "description": "Extension name",
-    "message": "RA Browser — Local AI Web Agent"
+    "message": "RA Browser Use — Local AI Web Agent"
   },
   "errors_unknown": {
     "message": "Unknown error occurred"
@@ -38,7 +38,7 @@
     "message": "Back to chat"
   },
   "welcome_title": {
-    "message": "Welcome to RA Browser!"
+    "message": "Welcome to RA Browser Use!"
   },
   "welcome_instruction": {
     "message": "To get started, please configure your API keys in the settings page."
@@ -167,7 +167,7 @@
     "message": "Enable Voice Input"
   },
   "permissions_microphone_description": {
-    "message": "RA Browser needs microphone access to convert your speech to text."
+    "message": "RA Browser Use needs microphone access to convert your speech to text."
   },
   "permissions_microphone_grantButton": {
     "message": "Grant Microphone Permission"

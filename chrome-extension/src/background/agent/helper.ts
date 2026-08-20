@@ -357,7 +357,7 @@ export function createChatModel(providerConfig: ProviderConfig, modelConfig: Mod
       return createOpenAIChatModel(providerConfig, modelConfig, {
         headers: {
           'HTTP-Referer': 'https://runanywhere.ai',
-          'X-Title': 'RA Browser',
+          'X-Title': 'RA Browser Use',
         },
       });
     }

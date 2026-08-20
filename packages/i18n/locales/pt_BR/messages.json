@@ -5,7 +5,7 @@
   },
   "app_metadata_name": {
     "description": "Nome da extensão",
-    "message": "RA Browser — Agente Web de IA Local"
+    "message": "RA Browser Use — Agente Web de IA"
   },
   "errors_unknown": {
     "message": "Ocorreu um erro desconhecido"
@@ -38,7 +38,7 @@
     "message": "Voltar para o chat"
   },
   "welcome_title": {
-    "message": "Bem-vindo ao RA Browser!"
+    "message": "Bem-vindo ao RA Browser Use!"
   },
   "welcome_instruction": {
     "message": "Para começar, por favor, configure suas chaves de API na página de configurações."
@@ -167,7 +167,7 @@
     "message": "Ativar Entrada de Voz"
   },
   "permissions_microphone_description": {
-    "message": "O RA Browser precisa de acesso ao microfone para converter sua fala em texto."
+    "message": "O RA Browser Use precisa de acesso ao microfone para converter sua fala em texto."
   },
   "permissions_microphone_grantButton": {
     "message": "Conceder Permissão ao Microfone"

@@ -90,7 +90,7 @@ export const AnalyticsSettings: React.FC<AnalyticsSettingsProps> = ({ isDarkMode
               <label
                 htmlFor="analytics-enabled"
                 className={`text-base font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                Help improve RA Browser
+                Help improve RA Browser Use
               </label>
               <div className="relative inline-block w-12 select-none">
                 <input
@@ -151,7 +151,7 @@ export const AnalyticsSettings: React.FC<AnalyticsSettingsProps> = ({ isDarkMode
             <div
               className={`rounded-md border p-4 ${isDarkMode ? 'border-yellow-700 bg-yellow-900/20' : 'border-yellow-200 bg-yellow-50'}`}>
               <p className={`text-sm ${isDarkMode ? 'text-yellow-300' : 'text-yellow-700'}`}>
-                Analytics disabled. You can re-enable it anytime to help improve RA Browser.
+                Analytics disabled. You can re-enable it anytime to help improve RA Browser Use.
               </p>
             </div>
           )}

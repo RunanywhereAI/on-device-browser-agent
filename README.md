@@ -1,7 +1,7 @@
-<h1 align="center">RA Browser</h1>
+<h1 align="center">RA Browser Use</h1>
 
 <p align="center">
-  <img src="chrome-extension/public/icon-128.png" width="72" height="72" alt="RA Browser" />
+  <img src="chrome-extension/public/icon-128.png" width="72" height="72" alt="RA Browser Use" />
 </p>
 
 <p align="center"><strong>An AI web agent for Chrome that runs entirely on your machine.</strong></p>
@@ -22,7 +22,7 @@
 
 ## This is a public fork of Nanobrowser
 
-RA Browser is an openly-declared fork of
+RA Browser Use is an openly-declared fork of
 **[Nanobrowser](https://github.com/nanobrowser/nanobrowser)** (Apache-2.0), adapted
 for local, on-device AI and powered by the [RunAnywhere](https://runanywhere.ai) SDK.
 
@@ -41,13 +41,13 @@ We want to be unambiguous about that, so:
 
 Nanobrowser built an excellent multi-agent browser automation extension. Our
 contribution is a different answer to *where the model runs*: Nanobrowser connects
-to cloud LLM providers (or a separately-installed Ollama), while RA Browser's
+to cloud LLM providers (or a separately-installed Ollama), while RA Browser Use's
 default is a model executing inside the extension itself. Credit for the agent
 architecture, the DOM serialization, and the extension foundation belongs upstream.
 
 ## What changes in this fork
 
-| | Nanobrowser | RA Browser |
+| | Nanobrowser | RA Browser Use |
 |---|---|---|
 | Where the model runs | Cloud API, or a separate local Ollama process | **Inside the extension**, via RunAnywhere (WebAssembly + WebGPU) |
 | Setup | Bring your own API key | **Nothing to configure** — it picks a model for your hardware |
@@ -56,7 +56,7 @@ architecture, the DOM serialization, and the extension foundation belongs upstre
 | Cloud providers | The product | Still supported, now optional |
 
 Cloud providers are deliberately kept. Local inference is the default and the
-point, but nothing stops you pointing RA Browser at a frontier model when a task
+point, but nothing stops you pointing RA Browser Use at a frontier model when a task
 genuinely needs one.
 
 ## Status
