@@ -24,7 +24,7 @@ This is a **fork, declared openly**: nanobrowser's full 369-commit history was m
 
 | Branch | What it is |
 |---|---|
-| **`feat/cua-runtime-profiles`** | Two commits off `main`. Not merged, not published. |
+| **`feat/web-constrained-decoding-and-cua-profiles`** | Two commits off `main`, open as **PR #749**. Not merged, not published. |
 | `main` | Untouched. |
 
 Two changes, both needed by the extension:
