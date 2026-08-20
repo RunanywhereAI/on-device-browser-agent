@@ -1,11 +1,11 @@
 {
   "app_metadata_description": {
     "description": "Descrição da extensão",
-    "message": "Automatize tarefas da web com IA! NanoBrowser é uma extensão de código aberto para o navegador que permite extrair dados, preencher formulários e muito mais."
+    "message": "Automatize a web com IA que roda inteiramente no seu dispositivo, com RunAnywhere. Sem nuvem, sem chave de API."
   },
   "app_metadata_name": {
     "description": "Nome da extensão",
-    "message": "Nanobrowser: Agente Web de IA e Automação"
+    "message": "RA Browser — Agente Web de IA Local"
   },
   "errors_unknown": {
     "message": "Ocorreu um erro desconhecido"
@@ -38,7 +38,7 @@
     "message": "Voltar para o chat"
   },
   "welcome_title": {
-    "message": "Bem-vindo ao Nanobrowser!"
+    "message": "Bem-vindo ao RA Browser!"
   },
   "welcome_instruction": {
     "message": "Para começar, por favor, configure suas chaves de API na página de configurações."
@@ -167,7 +167,7 @@
     "message": "Ativar Entrada de Voz"
   },
   "permissions_microphone_description": {
-    "message": "O Nanobrowser precisa de acesso ao microfone para converter sua fala em texto."
+    "message": "O RA Browser precisa de acesso ao microfone para converter sua fala em texto."
   },
   "permissions_microphone_grantButton": {
     "message": "Conceder Permissão ao Microfone"
@@ -289,7 +289,6 @@
   "options_models_providers_custom_name_placeholder": {
     "message": "Nome do provedor"
   },
-
   "options_models_providers_apiKey": {
     "message": "Chave de API"
   },
@@ -308,21 +307,18 @@
   "options_models_providers_apiKey_show": {
     "message": "Mostrar chave de API"
   },
-
   "options_models_selection_header": {
     "message": "Seleção de Modelo"
   },
   "options_models_speechToText_header": {
     "message": "Modelo de Fala para Texto"
   },
-
   "options_models_agents_navigator": {
     "message": "Navega em sites e executa ações"
   },
   "options_models_agents_planner": {
     "message": "Desenvolve e refina estratégias para completar tarefas"
   },
-
   "options_models_labels_model": {
     "message": "Modelo"
   },
@@ -410,7 +406,6 @@
       }
     }
   },
-
   "options_firewall_header": {
     "message": "Firewall"
   },
@@ -447,7 +442,6 @@
   "options_firewall_howItWorks": {
     "message": "O firewall contém uma lista de negações e uma lista de permissões.\nSe ambas as listas estiverem vazias, todos os URLs são permitidos\nA lista de negações tem prioridade - se um URL corresponder a qualquer entrada da lista de negações, ele será bloqueado\nQuando a lista de permissões está vazia, todos os URLs não negados são permitidos\nQuando a lista de permissões não está vazia, apenas os URLs correspondentes são permitidos\nCuringas ainda NÃO são suportados\nA lista de permissões é preferível à lista de negações"
   },
-
   "bg_errors_noTabId": {
     "message": "Nenhum ID de aba fornecido"
   },
@@ -547,7 +541,6 @@
   "exec_replay_historyEmpty": {
     "message": "O histórico está vazio"
   },
-
   "act_searchGoogle_start": {
     "message": "Procurando por \"$QUERY$\" no Google",
     "placeholders": {

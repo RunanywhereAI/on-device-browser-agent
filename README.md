@@ -1,268 +1,108 @@
-<h1 align="center">
-    <img src="https://github.com/user-attachments/assets/ec60b0c4-87ba-48f4-981a-c55ed0e8497b" height="100" width="375" alt="banner" /><br>
-</h1>
+<h1 align="center">RA Browser</h1>
 
+<p align="center">
+  <img src="chrome-extension/public/icon-128.png" width="72" height="72" alt="RA Browser" />
+</p>
 
-<div align="center">
+<p align="center"><strong>An AI web agent for Chrome that runs entirely on your machine.</strong></p>
 
-[![GitHub](https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/nanobrowser)
-[![Twitter](https://img.shields.io/badge/Twitter-000000?style=for-the-badge&logo=x&logoColor=white)](https://x.com/nanobrowser_ai)
-[![Discord](https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/NN3ABHggMK)
-[<img src="https://deepwiki.com/badge.svg" height="28" alt="Ask DeepWiki">](https://deepwiki.com/nanobrowser/nanobrowser)
-[![Sponsor](https://img.shields.io/badge/Sponsor-ff69b4?style=for-the-badge&logo=githubsponsors&logoColor=white)](https://github.com/sponsors/alexchenzl)
+<p align="center">
+  Give it a task in plain language and it navigates, clicks, types, and extracts
+  for you — with the model running on your own hardware. No API key. No cloud. No
+  page content leaving your browser.
+</p>
 
-</div>
+<p align="center">
+  <a href="https://github.com/nanobrowser/nanobrowser">Forked from Nanobrowser</a> ·
+  Powered by <a href="https://runanywhere.ai">RunAnywhere</a> ·
+  Apache-2.0
+</p>
 
-## 🌐 Nanobrowser
+---
 
-Nanobrowser is an open-source AI web automation tool that runs in your browser. A free alternative to OpenAI Operator with flexible LLM options and multi-agent system.
+## This is a public fork of Nanobrowser
 
-⬇️ Get [Nanobrowser from Chrome Web Store](https://chromewebstore.google.com/detail/nanobrowser/imbddededgmcgfhfpcjmijokokekbkal) for free
+RA Browser is an openly-declared fork of
+**[Nanobrowser](https://github.com/nanobrowser/nanobrowser)** (Apache-2.0), adapted
+for local, on-device AI and powered by the [RunAnywhere](https://runanywhere.ai) SDK.
 
-👏 Join the community in [Discord](https://discord.gg/NN3ABHggMK) | [X](https://x.com/nanobrowser_ai)
+We want to be unambiguous about that, so:
 
-🌟 Loving Nanobrowser? Give us a star  and help spread the word!
+- **Upstream's full commit history is merged into this repository**, not squashed
+  away. `git log` and `git blame` show the real provenance of every inherited file.
+- **Upstream is tracked as a live git remote**, and we pull its fixes forward:
 
-❤️ Support the project by [sponsoring us](https://github.com/sponsors/alexchenzl) - every contribution helps keep Nanobrowser free and open source!
+  ```bash
+  git remote add upstream https://github.com/nanobrowser/nanobrowser.git
+  git fetch upstream && git merge upstream/master
+  ```
 
-<div align="center">
-<img src="https://github.com/user-attachments/assets/112c4385-7b03-4b81-a352-4f348093351b" width="600" alt="Nanobrowser Demo GIF" />
-<p><em>Nanobrowser's multi-agent system analyzing HuggingFace in real-time, with the Planner intelligently self-correcting when encountering obstacles and dynamically instructing the Navigator to adjust its approach—all running locally in your browser.</em></p>
-</div>
+- Attribution and the list of significant modifications are in [`NOTICE`](NOTICE).
 
-## 🔥Why Nanobrowser?
+Nanobrowser built an excellent multi-agent browser automation extension. Our
+contribution is a different answer to *where the model runs*: Nanobrowser connects
+to cloud LLM providers (or a separately-installed Ollama), while RA Browser's
+default is a model executing inside the extension itself. Credit for the agent
+architecture, the DOM serialization, and the extension foundation belongs upstream.
 
-Looking for a powerful AI browser agent without the $200/month price tag of OpenAI Operator? **Nanobrowser** , as a chrome extension, delivers premium web automation capabilities while keeping you in complete control:
+## What changes in this fork
 
-- **100% Free** - No subscription fees or hidden costs. Just install and use your own API keys, and you only pay what you use with your own API keys.
-- **Privacy-Focused** - Everything runs in your local browser. Your credentials stay with you, never shared with any cloud service.
-- **Flexible LLM Options** - Connect to your preferred LLM providers with the freedom to choose different models for different agents.
-- **Fully Open Source** - Complete transparency in how your browser is automated. No black boxes or hidden processes.
+| | Nanobrowser | RA Browser |
+|---|---|---|
+| Where the model runs | Cloud API, or a separate local Ollama process | **Inside the extension**, via RunAnywhere (WebAssembly + WebGPU) |
+| Setup | Bring your own API key | **Nothing to configure** — it picks a model for your hardware |
+| Page data | Sent to whichever provider you configure | **Never leaves the browser** on the default path |
+| Cost | Per-token provider billing | **Free to run** |
+| Cloud providers | The product | Still supported, now optional |
 
-> **Note:** We currently support OpenAI, Anthropic, Gemini, Ollama, Groq, Cerebras, Llama and custom OpenAI-Compatible providers, more providers will be supported.
+Cloud providers are deliberately kept. Local inference is the default and the
+point, but nothing stops you pointing RA Browser at a frontier model when a task
+genuinely needs one.
 
+## Status
 
-## 📊 Key Features
+**Early development, not yet released.** The fork foundation is in place and the
+extension builds and runs; the on-device inference backend is being wired up.
+There is no Chrome Web Store listing yet. Track progress in the issues.
 
-- **Multi-agent System**: Specialized AI agents collaborate to accomplish complex web workflows
-- **Interactive Side Panel**: Intuitive chat interface with real-time status updates
-- **Task Automation**: Seamlessly automate repetitive web automation tasks across websites
-- **Follow-up Questions**: Ask contextual follow-up questions about completed tasks
-- **Conversation History**: Easily access and manage your AI agent interaction history
-- **Multiple LLM Support**: Connect your preferred LLM providers and assign different models to different agents
+## Development
 
+Requires Node (see [`.nvmrc`](.nvmrc)) and pnpm — `engine-strict` is on, so a
+mismatched toolchain fails install rather than breaking mysteriously later.
 
-## 🌐 Browser Support
+```bash
+nvm use
+pnpm install
+pnpm build        # or: pnpm dev  (watch mode)
+```
 
-**Officially Supported:**
-- **Chrome** - Full support with all features
-- **Edge** - Full support with all features
+Then load it in Chrome: `chrome://extensions` → enable **Developer mode** →
+**Load unpacked** → select `dist/`.
 
-**Not Supported:**
-- Firefox, Safari, and other Chromium variants (Opera, Arc, etc.)
+```bash
+pnpm type-check                  # tsc across every workspace
+pnpm lint
+pnpm -F chrome-extension test    # vitest
+```
 
-> **Note**: While Nanobrowser may function on other Chromium-based browsers, we recommend using Chrome or Edge for the best experience and guaranteed compatibility.
+Chrome and Edge only. Firefox and Safari are not supported — on-device inference
+here depends on Chrome's offscreen-document, WebGPU, and OPFS behaviour.
 
+Architecture notes for contributors and coding agents live in
+[`CLAUDE.md`](CLAUDE.md) / [`AGENTS.md`](AGENTS.md).
 
-## 🚀 Quick Start
+## Privacy
 
-1. **Install from Chrome Web Store** (Stable Version):
-   * Visit the [Nanobrowser Chrome Web Store page](https://chromewebstore.google.com/detail/nanobrowser/imbddededgmcgfhfpcjmijokokekbkal)
-   * Click "Add to Chrome" button
-   * Confirm the installation when prompted
+On the default local path, the model runs in the extension, so page content,
+prompts, and model weights stay on your machine. Weights are downloaded once from
+a public model host and cached on disk.
 
-> **Important Note**: For latest features, install from ["Manually Install Latest Version"](#-manually-install-latest-version) below, as Chrome Web Store version may be delayed due to review process.
+Two honest caveats. First, browser automation needs broad browser access, and
+those Chrome permissions are real regardless of where inference happens. Second,
+if you configure a cloud provider, page content goes to that provider on the same
+terms as any other client — that is the trade you are choosing when you do it.
 
-2. **Configure Agent Models**:
-   * Click the Nanobrowser icon in your toolbar to open the sidebar
-   * Click the `Settings` icon (top right)
-   * Add your LLM API keys
-   * Choose which model to use for different agents (Navigator, Planner)
+## License
 
-## 🔧 Manually Install Latest Version
-
-To get the most recent version with all the latest features:
-
-1. **Download**
-    * Download the latest `nanobrowser.zip` file from the official Github [release page](https://github.com/nanobrowser/nanobrowser/releases).
-
-2. **Install**:
-    * Unzip `nanobrowser.zip`.
-    * Open `chrome://extensions/` in Chrome
-    * Enable `Developer mode` (top right)
-    * Click `Load unpacked` (top left)
-    * Select the unzipped `nanobrowser` folder.
-
-3. **Configure Agent Models**
-    * Click the Nanobrowser icon in your toolbar to open the sidebar
-    * Click the `Settings` icon (top right).
-    * Add your LLM API keys.
-    * Choose which model to use for different agents (Navigator, Planner)
-
-4. **Upgrading**:
-    * Download the latest `nanobrowser.zip` file from the release page.
-    * Unzip and replace your existing Nanobrowser files with the new ones.
-    * Go to `chrome://extensions/` in Chrome and click the refresh icon on the Nanobrowser card.
-
-## 🛠️ Build from Source
-
-If you prefer to build Nanobrowser yourself, follow these steps:
-
-1. **Prerequisites**:
-   * [Node.js](https://nodejs.org/) (v22.12.0 or higher)
-   * [pnpm](https://pnpm.io/installation) (v9.15.1 or higher)
-
-2. **Clone the Repository**:
-   ```bash
-   git clone https://github.com/nanobrowser/nanobrowser.git
-   cd nanobrowser
-   ```
-
-3. **Install Dependencies**:
-   ```bash
-   pnpm install
-   ```
-
-4. **Build the Extension**:
-   ```bash
-   pnpm build
-   ```
-
-5. **Load the Extension**:
-   * The built extension will be in the `dist` directory
-   * Follow the installation steps from the Manually Install section to load the extension into your browser
-
-6. **Development Mode** (optional):
-   ```bash
-   pnpm dev
-   ```
-
-## 🤖 Choosing Your Models
-
-Nanobrowser allows you to configure different LLM models for each agent to balance performance and cost. Here are recommended configurations:
-
-### Better Performance
-- **Planner**: Claude Sonnet 4
-  - Better reasoning and planning capabilities
-- **Navigator**: Claude Haiku 3.5
-  - Efficient for web navigation tasks
-  - Good balance of performance and cost
-
-### Cost-Effective Configuration
-- **Planner**: Claude Haiku or GPT-4o
-  - Reasonable performance at lower cost
-  - May require more iterations for complex tasks
-- **Navigator**: Gemini 2.5 Flash or GPT-4o-mini
-  - Lightweight and cost-efficient
-  - Suitable for basic navigation tasks
-
-### Local Models
-- **Setup Options**:
-  - Use Ollama or other custom OpenAI-compatible providers to run models locally
-  - Zero API costs and complete privacy with no data leaving your machine
-
-- **Recommended Models**:
-  - **Qwen3-30B-A3B-Instruct-2507**
-  - **Falcon3 10B**
-  - **Qwen 2.5 Coder 14B**
-  - **Mistral Small 24B**
-  - [Latest test results from community](https://gist.github.com/maximus2600/75d60bf3df62986e2254d5166e2524cb) 
-  - We welcome community experience sharing with other local models in our [Discord](https://discord.gg/NN3ABHggMK)
-
-- **Prompt Engineering**:
-  - Local models require more specific and cleaner prompts
-  - Avoid high-level, ambiguous commands
-  - Break complex tasks into clear, detailed steps
-  - Provide explicit context and constraints
-
-> **Note**: The cost-effective configuration may produce less stable outputs and require more iterations for complex tasks.
-
-> **Tip**: Feel free to experiment with your own model configurations! Found a great combination? Share it with the community in our [Discord](https://discord.gg/NN3ABHggMK) to help others optimize their setup.
-
-## 💡 See It In Action
-
-Here are some powerful tasks you can accomplish with just a sentence:
-
-1. **News Summary**:
-   > "Go to TechCrunch and extract top 10 headlines from the last 24 hours"
-
-2. **GitHub Research**:
-   > "Look for the trending Python repositories on GitHub with most stars"
-
-3. **Shopping Research**:
-   > "Find a portable Bluetooth speaker on Amazon with a water-resistant design, under $50. It should have a minimum battery life of 10 hours"
-
-## 🛠️ Roadmap
-
-We're actively developing Nanobrowser with exciting features on the horizon, welcome to join us! 
-
-Check out our detailed roadmap and upcoming features in our [GitHub Discussions](https://github.com/nanobrowser/nanobrowser/discussions/85). 
-
-## 🤝 Contributing
-
-**We need your help to make Nanobrowser even better!**  Contributions of all kinds are welcome:
-
-*  **Share Prompts & Use Cases** 
-   * Join our [Discord server](https://discord.gg/NN3ABHggMK).
-   * share how you're using Nanobrowser.  Help us build a library of useful prompts and real-world use cases.
-*  **Provide Feedback** 
-   * Try Nanobrowser and give us feedback on its performance or suggest improvements in our [Discord server](https://discord.gg/NN3ABHggMK).
-* **Contribute Code**
-   * Check out our [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to contribute code to the project.
-   * Submit pull requests for bug fixes, features, or documentation improvements.
-
-
-We believe in the power of open source and community collaboration.  Join us in building the future of web automation!
-
-
-## 🔒 Security
-
-If you discover a security vulnerability, please **DO NOT** disclose it publicly through issues, pull requests, or discussions.
-
-Instead, please create a [GitHub Security Advisory](https://github.com/nanobrowser/nanobrowser/security/advisories/new) to report the vulnerability responsibly. This allows us to address the issue before it's publicly disclosed.
-
-We appreciate your help in keeping Nanobrowser and its users safe!
-
-## 💬 Community
-
-Join our growing community of developers and users:
-
-- [Discord](https://discord.gg/NN3ABHggMK) - Chat with team and community
-- [Twitter](https://x.com/nanobrowser_ai) - Follow for updates and announcements
-- [GitHub Discussions](https://github.com/nanobrowser/nanobrowser/discussions) - Share ideas and ask questions
-
-## 👏 Acknowledgments
-
-Nanobrowser builds on top of other awesome open-source projects:
-
-- [Browser Use](https://github.com/browser-use/browser-use)
-- [Puppeteer](https://github.com/EmergenceAI/Agent-E)
-- [Chrome Extension Boilerplate](https://github.com/Jonghakseo/chrome-extension-boilerplate-react-vite)
-- [LangChain](https://github.com/langchain-ai/langchainjs)
-
-Huge thanks to their creators and contributors!
-
-## 📄 License
-
-This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
-
-Made with ❤️ by the Nanobrowser Team. 
-
-Like Nanobrowser? Give us a star 🌟 and join us in [Discord](https://discord.gg/NN3ABHggMK) | [X](https://x.com/nanobrowser_ai)
-
-## 🔗 Our Other Products
-
-- [DSH Plugin Directory](https://dsh.directory/): Discover installable community plugins for DeepSeek Harness by category, popularity, and activity.
-
-## ⚠️ DISCLAIMER ON DERIVATIVE PROJECTS
-
-**We explicitly *DO NOT* endorse, support, or participate in any** projects involving cryptocurrencies, tokens, NFTs, or other blockchain-related applications **based on this codebase.**
-
-**Any such derivative projects are NOT Affiliated with, or maintained by, or in any way connected to the official Nanobrowser project or its core team.**
-
-**We assume NO LIABILITY for any losses, damages, or issues arising from the use of third-party derivative projects. Users interact with these projects at their own risk.**
-
-**We reserve the right to publicly distance ourselves from any misuse or misleading use of our name, codebase, or brand.**
-
-We encourage open-source innovation but urge our community to be discerning and cautious. Please ensure you understand the risks before using any software or service built upon our codebase by independent developers.
-
+Apache-2.0 — see [`LICENSE`](LICENSE), inherited from Nanobrowser and retained.
+Attribution and modifications: [`NOTICE`](NOTICE).

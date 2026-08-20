@@ -1,11 +1,11 @@
 {
-  "name": "nanobrowser",
+  "name": "ra-browser",
   "version": "0.1.13",
-  "description": "AI web automation tool",
+  "description": "On-device AI web automation Chrome extension",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/nanobrowser/nanobrowser.git"
+    "url": "https://github.com/RunanywhereAI/on-device-browser-agent.git"
   },
   "type": "module",
   "scripts": {

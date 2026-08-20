@@ -10,13 +10,14 @@ const defaultFavoritePrompts = [
       '- Go to https://huggingface.co/papers and click through each of the first 3 papers.\n- For each paper:\n  - Record the title, URL and upvotes\n  - Summarise the abstract section\n- Finally, compile together a summary of all 3 papers, ranked by upvotes',
   },
   {
-    title: '🐦 Follow us on X/Twitter!',
-    content: 'Follow us at https://x.com/nanobrowser_ai to stay updated on the latest news and features!',
+    title: '📰 Catch me up on the news',
+    content:
+      '- Go to https://news.ycombinator.com\n- Read the titles of the top 10 stories\n- Group them by theme and tell me, in a short paragraph per theme, what people are talking about today',
   },
   {
-    title: '🌟 Star us on GitHub!',
+    title: '🔍 Compare two products',
     content:
-      "Open the Nanobrowser repository at https://github.com/nanobrowser/nanobrowser and check if you've already starred it. If not, please support us by giving us a star!",
+      '- Search for "noise cancelling headphones" on a major retailer\n- Open the top 2 results\n- For each one, record the name, price, and rating\n- Tell me which is the better buy and why',
   },
 ];
 

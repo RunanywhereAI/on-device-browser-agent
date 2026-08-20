@@ -38,7 +38,7 @@ const Options = () => {
 
   const handleTabClick = (tabId: TabTypes) => {
     if (tabId === 'help') {
-      window.open('https://nanobrowser.ai/docs', '_blank');
+      window.open('https://github.com/RunanywhereAI/on-device-browser-agent#readme', '_blank');
     } else {
       setActiveTab(tabId);
     }

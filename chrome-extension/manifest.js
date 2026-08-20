@@ -39,7 +39,7 @@ function withOperaSidebar(manifest) {
   return deepmerge(manifest, {
     sidebar_action: {
       default_panel: 'side-panel/index.html',
-      default_title: 'Nanobrowser',
+      default_title: 'RA Browser',
       default_icon: 'icon-32.png',
     },
   });
@@ -68,9 +68,17 @@ const manifest = withOperaSidebar(
       type: 'module',
     },
     action: {
-      default_icon: 'icon-32.png',
+      default_icon: {
+        16: 'icon-16.png',
+        32: 'icon-32.png',
+        48: 'icon-48.png',
+        128: 'icon-128.png',
+      },
     },
     icons: {
+      16: 'icon-16.png',
+      32: 'icon-32.png',
+      48: 'icon-48.png',
       128: 'icon-128.png',
     },
     content_scripts: [
