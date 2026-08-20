@@ -1,0 +1,78 @@
+.ra-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ra-space-sm);
+  cursor: pointer;
+  user-select: none;
+}
+
+.ra-toggle--disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.ra-toggle__control {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  width: var(--ra-switch-width);
+  height: var(--ra-switch-height);
+}
+
+.ra-toggle__input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.ra-toggle--disabled .ra-toggle__input {
+  cursor: not-allowed;
+}
+
+.ra-toggle__track {
+  position: absolute;
+  inset: 0;
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--ra-radius-pill);
+  background: var(--ra-muted);
+  border: var(--ra-stroke) solid var(--ra-border);
+  transition:
+    background-color var(--ra-duration-standard) var(--ra-ease-out),
+    border-color var(--ra-duration-standard) var(--ra-ease-out);
+}
+
+.ra-toggle__knob {
+  position: absolute;
+  top: 50%;
+  left: 2px;
+  width: var(--ra-switch-knob);
+  height: var(--ra-switch-knob);
+  border-radius: var(--ra-radius-pill);
+  background: var(--ra-surface);
+  box-shadow: var(--ra-elevation-card);
+  transform: translateY(-50%) translateX(0);
+  transition: transform var(--ra-duration-standard) var(--ra-ease-spring);
+}
+
+.ra-toggle__input:checked ~ .ra-toggle__track {
+  background: var(--ra-brand);
+  border-color: var(--ra-brand);
+}
+
+.ra-toggle__input:checked ~ .ra-toggle__track .ra-toggle__knob {
+  transform: translateY(-50%) translateX(var(--ra-switch-travel));
+}
+
+.ra-toggle__input:focus-visible ~ .ra-toggle__track {
+  box-shadow: var(--ra-focus-ring);
+}
+
+.ra-toggle__label {
+  font: var(--ra-size-body) / var(--ra-leading-prose) var(--ra-font-sans);
+  color: var(--ra-foreground);
+}

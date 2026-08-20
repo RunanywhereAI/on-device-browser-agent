@@ -1,0 +1,12 @@
+.ra-card {
+  background: var(--ra-surface);
+  border: var(--ra-stroke) solid var(--ra-border);
+  border-radius: var(--ra-radius-lg);
+  padding: var(--ra-card-padding);
+  box-shadow: var(--ra-elevation-card);
+}
+
+.ra-card--floating {
+  background: var(--ra-surface-floating);
+  box-shadow: var(--ra-elevation-floating);
+}

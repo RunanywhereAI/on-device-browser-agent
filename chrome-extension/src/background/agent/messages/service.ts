@@ -1,5 +1,5 @@
 import { type BaseMessage, AIMessage, HumanMessage, type SystemMessage, ToolMessage } from '@langchain/core/messages';
-import { MessageHistory, MessageMetadata } from '@src/background/agent/messages/views';
+import { MessageHistory, MessageMetadata, type ManagedMessage } from '@src/background/agent/messages/views';
 import { createLogger } from '@src/background/log';
 import {
   filterExternalContent,
@@ -12,12 +12,20 @@ const logger = createLogger('MessageManager');
 
 export class MessageManagerSettings {
   maxInputTokens = 128000;
+  // Token counts produced with this are an estimate (chars-per-token), not an exact
+  // tokenizer count - good enough for a soft budget, not for billing-grade accuracy.
   estimatedCharactersPerToken = 3;
   imageTokens = 800;
   includeAttributes: string[] = [];
   messageContext?: string;
   sensitiveData?: Record<string, string>;
   availableFilePaths?: string[];
+  // Rolling-window cap on how many navigator turns (state + model output + tool response)
+  // are kept in history, independent of the token budget above. This bounds growth even
+  // when maxInputTokens is generous (or, as today, never reaches its configured value
+  // because MessageManager is constructed with no settings - see executor.ts) across the
+  // up-to-100 steps a single task can run.
+  maxHistoryTurns = 20;
 
   constructor(
     options: {
@@ -28,6 +36,7 @@ export class MessageManagerSettings {
       messageContext?: string;
       sensitiveData?: Record<string, string>;
       availableFilePaths?: string[];
+      maxHistoryTurns?: number;
     } = {},
   ) {
     if (options.maxInputTokens !== undefined) this.maxInputTokens = options.maxInputTokens;
@@ -38,6 +47,7 @@ export class MessageManagerSettings {
     if (options.messageContext !== undefined) this.messageContext = options.messageContext;
     if (options.sensitiveData !== undefined) this.sensitiveData = options.sensitiveData;
     if (options.availableFilePaths !== undefined) this.availableFilePaths = options.availableFilePaths;
+    if (options.maxHistoryTurns !== undefined) this.maxHistoryTurns = options.maxHistoryTurns;
   }
 }
 
@@ -45,6 +55,15 @@ export default class MessageManager {
   private history: MessageHistory;
   private toolId: number;
   private settings: MessageManagerSettings;
+
+  // Rolling-window bookkeeping (see MessageManagerSettings.maxHistoryTurns).
+  // currentTurnLength counts messages added since the turn currently being built started;
+  // turnLengths is a queue (oldest first) of message-counts for turns that have already
+  // closed, i.e. how many messages removeOldestMessage() must pop to drop that whole turn.
+  private currentTurnLength = 0;
+  private turnLengths: number[] = [];
+  private elidedTurns = 0;
+  private truncationPlaceholder: ManagedMessage | null = null;
 
   constructor(settings: MessageManagerSettings = new MessageManagerSettings()) {
     this.settings = settings;
@@ -130,6 +149,12 @@ export default class MessageManager {
       });
       this.addMessageWithTokens(filepathsMsg, 'init');
     }
+
+    // Everything seeded above (system message, task, sensitive-data note, one-shot example,
+    // the history-start marker, file paths) is now sealed off as protected: the rolling
+    // window below only ever drops turns added after this point.
+    this.history.seedCount = this.history.messages.length;
+    this.currentTurnLength = 0;
   }
 
   public nextToolId(): number {
@@ -166,6 +191,14 @@ export default class MessageManager {
    */
   public length(): number {
     return this.history.messages.length;
+  }
+
+  /**
+   * Returns the current (estimated - see MessageManagerSettings.estimatedCharactersPerToken)
+   * total token count of the history.
+   */
+  public getTotalTokens(): number {
+    return this.history.totalTokens;
   }
 
   /**
@@ -206,10 +239,68 @@ export default class MessageManager {
 
   /**
    * Adds a state message to the history
+   *
+   * A new state message marks the start of a new navigator turn: this closes out the
+   * previous turn's length in the rolling window and, if that leaves us over
+   * maxHistoryTurns, drops the oldest turn(s) before the new state message is added.
    * @param stateMessage - The HumanMessage object containing the state
    */
   public addStateMessage(stateMessage: HumanMessage): void {
+    this._closeTurnAndEnforceWindow();
     this.addMessageWithTokens(stateMessage);
+  }
+
+  /**
+   * Closes the currently-accumulating turn (if any messages were added to it) and, while
+   * there are more completed turns than maxHistoryTurns allows, drops the oldest ones -
+   * removing every message they contain (never just part of one, so an AIMessage tool
+   * call and its ToolMessage response are always dropped together) - and keeps a single
+   * placeholder message up to date with how many turns have been elided so far.
+   */
+  private _closeTurnAndEnforceWindow(): void {
+    if (this.currentTurnLength > 0) {
+      this.turnLengths.push(this.currentTurnLength);
+      this.currentTurnLength = 0;
+    }
+
+    while (this.turnLengths.length > this.settings.maxHistoryTurns) {
+      const oldestTurnLength = this.turnLengths.shift();
+      if (oldestTurnLength === undefined) break;
+      for (let i = 0; i < oldestTurnLength; i++) {
+        this.history.removeOldestMessage();
+      }
+      this.elidedTurns += 1;
+    }
+
+    if (this.elidedTurns > 0) {
+      this._updateTruncationPlaceholder();
+    }
+  }
+
+  /**
+   * Creates (once) or updates the single placeholder message that tells the model history
+   * was truncated, instead of leaving it to silently see a gap. Updating in place - rather
+   * than removing and re-inserting - keeps its position (and this.truncationPlaceholder's
+   * validity) stable across repeated truncations.
+   */
+  private _updateTruncationPlaceholder(): void {
+    const content = `[... ${this.elidedTurns} earlier step${this.elidedTurns === 1 ? '' : 's'} omitted from history to stay within the context budget ...]`;
+
+    if (this.truncationPlaceholder) {
+      const oldTokens = this.truncationPlaceholder.metadata.tokens;
+      this.truncationPlaceholder.message.content = content;
+      const newTokens = this._countTokens(this.truncationPlaceholder.message);
+      this.truncationPlaceholder.metadata.tokens = newTokens;
+      this.history.totalTokens += newTokens - oldTokens;
+      return;
+    }
+
+    const insertAt = this.history.seedCount;
+    const msg = new HumanMessage({ content });
+    this.addMessageWithTokens(msg, 'history_truncated', insertAt);
+    this.truncationPlaceholder = this.history.messages[insertAt];
+    // The placeholder itself must never be dropped by a later round of trimming.
+    this.history.seedCount += 1;
   }
 
   /**
@@ -239,10 +330,24 @@ export default class MessageManager {
   }
 
   /**
-   * Removes the last state message from the history
+   * Removes the last state message from the history (used when a step is retried or
+   * cancelled after the state message was already added, before any model output followed
+   * it). Keeps the rolling-window turn-length counter in sync with what's actually still
+   * in history: if nothing was removed, the count is left untouched.
    */
   public removeLastStateMessage(): void {
-    this.history.removeLastStateMessage();
+    this._popLastStateMessage();
+  }
+
+  /**
+   * @returns true if a message was actually popped
+   */
+  private _popLastStateMessage(): boolean {
+    const removed = this.history.removeLastStateMessage();
+    if (removed) {
+      this.currentTurnLength = Math.max(0, this.currentTurnLength - 1);
+    }
+    return removed;
   }
 
   public getMessages(): BaseMessage[] {
@@ -289,6 +394,20 @@ export default class MessageManager {
     const tokenCount = this._countTokens(filteredMessage);
     const metadata: MessageMetadata = new MessageMetadata(tokenCount, messageType);
     this.history.addMessage(filteredMessage, metadata, position);
+
+    // The truncation placeholder isn't part of any turn - don't let it count toward one.
+    if (messageType !== 'history_truncated') {
+      this.currentTurnLength += 1;
+    }
+
+    // Enforce the (estimated) token budget: cutMessages() was previously fully implemented
+    // but never called, so history grew unbounded until the LLM provider itself rejected
+    // an oversized request. This is a secondary, tighter-in-the-worst-case safety net on
+    // top of the turn-based rolling window above - it can still fire between turns if a
+    // single message (e.g. a large page-state dump) is unusually large.
+    if (this.history.totalTokens > this.settings.maxInputTokens) {
+      this.cutMessages();
+    }
   }
 
   /**
@@ -363,9 +482,12 @@ export default class MessageManager {
   }
 
   /**
-   * Cuts the last message if the total tokens exceed the max input tokens
-   *
-   * Get current message list, potentially trimmed to max tokens
+   * Cuts the last message if the total tokens exceed the max input tokens: first drops any
+   * image content from it, then - if that alone isn't enough - proportionally trims its
+   * text. Called from addMessageWithTokens() whenever a message pushes history over the
+   * (estimated, not exact) token budget; throws if even the last message alone can't be
+   * shrunk enough, since at that point no message-level fix remains (shorten the system
+   * prompt or task instead).
    */
   public cutMessages(): void {
     let diff = this.history.totalTokens - this.settings.maxInputTokens;
@@ -414,7 +536,7 @@ export default class MessageManager {
     const newContent = content.slice(0, -charactersToRemove);
 
     // remove tokens and old long message
-    this.history.removeLastStateMessage();
+    this._popLastStateMessage();
 
     // new message with updated content
     const msg = new HumanMessage({ content: newContent });

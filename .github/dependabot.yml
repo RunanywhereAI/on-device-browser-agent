@@ -1,0 +1,40 @@
+version: 2
+updates:
+  # pnpm workspace root. Dependabot's npm ecosystem understands pnpm-workspace.yaml natively, so
+  # this single root entry covers chrome-extension, packages/*, and pages/* through the shared
+  # pnpm-lock.yaml — no per-workspace entries needed (and none would be safe: they'd race each
+  # other editing the same lockfile). EXTERNAL/nanobrowser is a gitignored, untracked local
+  # reference copy (see .gitignore) — it never reaches GitHub, so it isn't and can't be a target.
+  - package-ecosystem: 'npm'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+    open-pull-requests-limit: 5
+    groups:
+      # Collapse routine minor/patch bumps across ~16 workspaces into one PR/week instead of
+      # flooding the repo with one PR per package. Majors are left out of the group on purpose:
+      # things like the @langchain/* family, eslint, vite, and turbo treat majors (sometimes even
+      # minors) as breaking, so each major still gets its own PR for a human to review.
+      minor-and-patch:
+        update-types:
+          - 'minor'
+          - 'patch'
+    commit-message:
+      prefix: 'chore(deps)'
+
+  # Keep the third-party Actions this CI just introduced (checkout, pnpm/action-setup,
+  # setup-node, upload-artifact) from silently drifting past their pinned major version.
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+    open-pull-requests-limit: 5
+    groups:
+      actions-minor-and-patch:
+        update-types:
+          - 'minor'
+          - 'patch'
+    commit-message:
+      prefix: 'chore(ci)'

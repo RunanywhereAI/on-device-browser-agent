@@ -1,0 +1,34 @@
+{
+  "name": "@extension/offscreen",
+  "version": "0.1.13",
+  "description": "chrome extension - offscreen inference host",
+  "private": true,
+  "sideEffects": true,
+  "files": [
+    "dist/**"
+  ],
+  "scripts": {
+    "clean:node_modules": "pnpx rimraf node_modules",
+    "clean:turbo": "rimraf .turbo",
+    "clean": "pnpm clean:turbo && pnpm clean:node_modules",
+    "build": "vite build",
+    "dev": "cross-env __DEV__=true vite build --mode development",
+    "lint": "eslint . --ext .ts,.tsx",
+    "lint:fix": "pnpm lint --fix",
+    "prettier": "prettier . --write --ignore-path ../../.prettierignore",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@extension/runanywhere": "workspace:*",
+    "@runanywhere/web": "file:../../../runanywhere-sdks/bindings/web/dist/sdk-web/runanywhere-web-0.20.24.tgz",
+    "@runanywhere/web-llamacpp": "file:../../../runanywhere-sdks/bindings/web/dist/sdk-web/runanywhere-web-llamacpp-0.20.24.tgz",
+    "@extension/shared": "workspace:*",
+    "@extension/storage": "workspace:*"
+  },
+  "devDependencies": {
+    "@extension/hmr": "workspace:*",
+    "@extension/tsconfig": "workspace:*",
+    "@extension/vite-config": "workspace:*",
+    "cross-env": "^7.0.3"
+  }
+}

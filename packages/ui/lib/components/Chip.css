@@ -1,0 +1,44 @@
+.ra-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ra-space-xs);
+  padding: var(--ra-space-hair) var(--ra-space-sm);
+  border-radius: var(--ra-radius-pill);
+  border: var(--ra-stroke) solid transparent;
+  font: 600 var(--ra-size-chip) / var(--ra-leading-tight) var(--ra-font-sans);
+  white-space: nowrap;
+}
+
+/* Tints are color-mix()'d from the existing status/brand tokens rather than
+ * new hardcoded hex values — tokens.css remains the only place a color is
+ * ever spelled out literally. */
+
+.ra-chip--neutral {
+  background: var(--ra-muted);
+  color: var(--ra-muted-foreground);
+  border-color: var(--ra-border);
+}
+
+.ra-chip--brand {
+  background: color-mix(in srgb, var(--ra-brand) 14%, transparent);
+  color: var(--ra-brand-ink);
+  border-color: color-mix(in srgb, var(--ra-brand) 30%, transparent);
+}
+
+.ra-chip--success {
+  background: color-mix(in srgb, var(--ra-success) 16%, transparent);
+  color: var(--ra-success-text);
+  border-color: color-mix(in srgb, var(--ra-success) 30%, transparent);
+}
+
+.ra-chip--warning {
+  background: color-mix(in srgb, var(--ra-warning) 16%, transparent);
+  color: var(--ra-warning-text);
+  border-color: color-mix(in srgb, var(--ra-warning) 30%, transparent);
+}
+
+.ra-chip--danger {
+  background: color-mix(in srgb, var(--ra-danger) 16%, transparent);
+  color: var(--ra-danger-text);
+  border-color: color-mix(in srgb, var(--ra-danger) 30%, transparent);
+}

@@ -8,6 +8,9 @@ export enum AgentNameEnum {
 // For built-in providers, we will create ChatModel instances with its respective LangChain ChatModel classes
 // For custom providers, we will create ChatModel instances with the ChatOpenAI class
 export enum ProviderTypeEnum {
+  // On-device inference through the RunAnywhere SDK. The default: no API key,
+  // no cloud, and the model runs inside the extension itself.
+  RunAnywhere = 'runanywhere',
   OpenAI = 'openai',
   Anthropic = 'anthropic',
   DeepSeek = 'deepseek',
@@ -24,6 +27,16 @@ export enum ProviderTypeEnum {
 
 // Default supported models for each built-in provider
 export const llmProviderModelNames = {
+  // Kept in step with RA_MODEL_CATALOG in @extension/runanywhere. Ordered
+  // best-first; automatic selection normally decides for the user, so this list
+  // exists for the advanced override rather than as a menu.
+  [ProviderTypeEnum.RunAnywhere]: [
+    'lfm2.5-2.6b-q4_k_m',
+    'qwen3-4b-q4_k_m',
+    'lfm2.5-1.2b-q4_k_m',
+    'lfm2.5-vl-3b-q4_k_m',
+    'qwen3-0.6b-q4_k_m',
+  ],
   [ProviderTypeEnum.OpenAI]: [
     'gpt-5.1',
     'gpt-5',
@@ -54,6 +67,16 @@ export const llmProviderModelNames = {
 
 // Default parameters for each agent per provider, for providers not specified, use OpenAI parameters
 export const llmProviderParameters = {
+  [ProviderTypeEnum.RunAnywhere]: {
+    [AgentNameEnum.Planner]: {
+      temperature: 0.3,
+      topP: 0.9,
+    },
+    [AgentNameEnum.Navigator]: {
+      temperature: 0.1,
+      topP: 0.1,
+    },
+  },
   [ProviderTypeEnum.OpenAI]: {
     [AgentNameEnum.Planner]: {
       temperature: 0.7,

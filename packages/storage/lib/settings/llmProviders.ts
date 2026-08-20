@@ -58,6 +58,7 @@ export function getProviderTypeByProviderId(providerId: string): ProviderTypeEnu
 
   // Handle standard provider types
   switch (providerId) {
+    case ProviderTypeEnum.RunAnywhere:
     case ProviderTypeEnum.OpenAI:
     case ProviderTypeEnum.Anthropic:
     case ProviderTypeEnum.DeepSeek:
@@ -77,6 +78,8 @@ export function getProviderTypeByProviderId(providerId: string): ProviderTypeEnu
 // Make sure to update this function if you add a new provider type
 export function getDefaultDisplayNameFromProviderId(providerId: string): string {
   switch (providerId) {
+    case ProviderTypeEnum.RunAnywhere:
+      return 'On-device (RunAnywhere)';
     case ProviderTypeEnum.OpenAI:
       return 'OpenAI';
     case ProviderTypeEnum.Anthropic:
@@ -127,6 +130,17 @@ export function getDefaultProviderConfig(providerId: string): ProviderConfig {
               ? 'https://api.llama.com/v1'
               : undefined,
         modelNames: [...(llmProviderModelNames[providerId] || [])],
+        createdAt: Date.now(),
+      };
+
+    // Runs in-process. There is no endpoint to point at and no key to supply,
+    // which is why this provider needs no configuration from the user at all.
+    case ProviderTypeEnum.RunAnywhere:
+      return {
+        apiKey: '',
+        name: getDefaultDisplayNameFromProviderId(ProviderTypeEnum.RunAnywhere),
+        type: ProviderTypeEnum.RunAnywhere,
+        modelNames: [...(llmProviderModelNames[ProviderTypeEnum.RunAnywhere] || [])],
         createdAt: Date.now(),
       };
 

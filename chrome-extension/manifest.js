@@ -61,7 +61,26 @@ const manifest = withOperaSidebar(
     version: packageJson.version,
     description: '__MSG_app_metadata_description__',
     host_permissions: ['<all_urls>'],
-    permissions: ['storage', 'scripting', 'tabs', 'activeTab', 'debugger', 'unlimitedStorage', 'webNavigation'],
+    permissions: [
+      'storage',
+      'scripting',
+      'tabs',
+      'activeTab',
+      'debugger',
+      'unlimitedStorage',
+      'webNavigation',
+      // Hosts the on-device model: a service worker has no DOM, Worker, WebGPU
+      // or OPFS, and is killed after 30s idle, which a resident multi-gigabyte
+      // model cannot survive.
+      'offscreen',
+    ],
+    // Opt in to cross-origin isolation so SharedArrayBuffer and threaded WASM
+    // are available. Extension pages do NOT get this for free despite being
+    // same-origin, and it cannot be granted to the service worker at all.
+    // The primary WebGPU engine is the no-pthread build and does not require
+    // it; this keeps the threaded CPU fallback available.
+    cross_origin_embedder_policy: { value: 'require-corp' },
+    cross_origin_opener_policy: { value: 'same-origin' },
     options_page: 'options/index.html',
     background: {
       service_worker: 'background.iife.js',

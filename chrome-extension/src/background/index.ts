@@ -18,6 +18,7 @@ import { DEFAULT_AGENT_OPTIONS } from './agent/types';
 import { SpeechToTextService } from './services/speechToText';
 import { injectBuildDomTreeScripts } from './browser/dom/service';
 import { analytics } from './services/analytics';
+import { registerOffscreenPortListener } from '@extension/runanywhere';
 
 const logger = createLogger('background');
 
@@ -74,6 +75,12 @@ chrome.runtime.onMessage.addListener(() => {
 });
 
 // Setup connection listener for long-lived connections (e.g., side panel)
+// Accept the inference host's port. Registered at top level so it is in place
+// again immediately after the worker is respawned — the offscreen document
+// outlives us and reconnects on its own, and a listener registered later would
+// miss that connection.
+registerOffscreenPortListener();
+
 chrome.runtime.onConnect.addListener(port => {
   if (port.name === 'side-panel-connection') {
     const senderUrl = port.sender?.url;

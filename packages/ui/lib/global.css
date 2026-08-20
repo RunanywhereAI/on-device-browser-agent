@@ -1,3 +1,21 @@
+/* Pulls the --ra-* design tokens in ahead of Tailwind's layers so every
+ * consumer of `@extension/ui/dist/global.css` (every page already imports
+ * this) gets the token custom properties for free, with no separate import
+ * to remember. See ./tokens.css for provenance. */
+@import './lib/tokens.css';
+
+/* Component styles are aggregated here rather than imported from each
+ * component module. Tailwind's config loader evaluates this package as
+ * CommonJS when it resolves `withUI` from the barrel, and a bare CSS import
+ * inside a component is a syntax error in that context. The cost is that all
+ * component CSS ships together, which is a few KB and irrelevant here. */
+@import './lib/components/Card.css';
+@import './lib/components/Chip.css';
+@import './lib/components/Disclosure.css';
+@import './lib/components/ProgressBar.css';
+@import './lib/components/Sheet.css';
+@import './lib/components/Toggle.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

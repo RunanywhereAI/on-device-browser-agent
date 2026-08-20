@@ -8,6 +8,7 @@ import { ChatCerebras } from '@langchain/cerebras';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { ChatOllama } from '@langchain/ollama';
 import { ChatDeepSeek } from '@langchain/deepseek';
+import { ChatRunAnywhere } from '@extension/runanywhere';
 
 const maxTokens = 1024 * 4;
 
@@ -324,6 +325,19 @@ export function createChatModel(providerConfig: ProviderConfig, modelConfig: Mod
         maxTokens,
       };
       return new ChatCerebras(args);
+    }
+    // On-device inference. Nothing to reach over the network: the model runs in
+    // the extension's own offscreen document, so there is no base URL and no key.
+    // Structured output goes through grammar-constrained decoding rather than
+    // prompt-and-parse, which is what makes a small local model reliable enough
+    // to emit an action object every single step.
+    case ProviderTypeEnum.RunAnywhere: {
+      return new ChatRunAnywhere({
+        modelId: modelConfig.modelName,
+        maxTokens,
+        temperature,
+        topP,
+      });
     }
     case ProviderTypeEnum.Ollama: {
       const args: {

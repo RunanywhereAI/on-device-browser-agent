@@ -24,6 +24,14 @@ export class MessageHistory {
   messages: ManagedMessage[] = [];
   totalTokens = 0;
 
+  /**
+   * Number of leading messages that removeOldestMessage() must never touch: the seeded
+   * init messages (system message, task, one-shot example, ...) plus, once created, the
+   * history-truncation placeholder message. MessageManager grows this boundary as those
+   * protected messages are added; it starts at 0 so a bare MessageHistory behaves as before.
+   */
+  seedCount = 0;
+
   addMessage(message: BaseMessage, metadata: MessageMetadata, position?: number): void {
     const managedMessage: ManagedMessage = {
       message,
@@ -47,15 +55,26 @@ export class MessageHistory {
 
   /**
    * Removes the last message from the history if it is a human message.
-   * This is used to remove the state message from the history.
+   * This is used to remove the state message from the history. Also respects seedCount, so
+   * calling this with no turn message added yet (nothing beyond the protected seed) is a
+   * true no-op rather than popping a seeded message.
+   * @returns true if a message was actually removed, false otherwise - callers that keep
+   * their own parallel bookkeeping (e.g. MessageManager's turn-length counter) need this
+   * to know whether to adjust their counts.
    */
-  removeLastStateMessage(): void {
-    if (this.messages.length > 2 && this.messages[this.messages.length - 1].message instanceof HumanMessage) {
+  removeLastStateMessage(): boolean {
+    if (
+      this.messages.length > 2 &&
+      this.messages.length > this.seedCount &&
+      this.messages[this.messages.length - 1].message instanceof HumanMessage
+    ) {
       const msg = this.messages.pop();
       if (msg) {
         this.totalTokens -= msg.metadata.tokens;
+        return true;
       }
     }
+    return false;
   }
 
   /**
@@ -73,10 +92,13 @@ export class MessageHistory {
   }
 
   /**
-   * Remove oldest non-system message
+   * Remove the oldest droppable message: the first one, scanning past the protected
+   * `seedCount` prefix, that isn't a SystemMessage (defense in depth - the seed's system
+   * message already lives inside that protected prefix, but this keeps the guarantee even
+   * if a caller never set seedCount).
    */
   removeOldestMessage(): void {
-    for (let i = 0; i < this.messages.length; i++) {
+    for (let i = this.seedCount; i < this.messages.length; i++) {
       if (!(this.messages[i].message instanceof SystemMessage)) {
         const msg = this.messages.splice(i, 1)[0];
         this.totalTokens -= msg.metadata.tokens;

@@ -1,0 +1,34 @@
+.ra-progress {
+  position: relative;
+  width: 100%;
+  height: var(--ra-space-xs);
+  border-radius: var(--ra-radius-pill);
+  background: var(--ra-muted);
+  overflow: hidden;
+}
+
+.ra-progress__fill {
+  height: 100%;
+  border-radius: var(--ra-radius-pill);
+  background: var(--ra-gradient-brand);
+  transition: width var(--ra-duration-standard) var(--ra-ease-out);
+}
+
+/* Indeterminate mode: a fixed-width fill shimmers across the track on the
+ * AMBIENT.shimmer period, instead of animating a fake percentage. */
+.ra-progress--indeterminate .ra-progress__fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 40%;
+  animation: ra-progress-shimmer var(--ra-ambient-shimmer) linear infinite;
+}
+
+@keyframes ra-progress-shimmer {
+  0% {
+    left: -40%;
+  }
+  100% {
+    left: 100%;
+  }
+}

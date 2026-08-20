@@ -24,6 +24,31 @@ import { isUrlAllowed } from './util';
 
 const logger = createLogger('Page');
 
+/**
+ * Whether inputTextElementNode() should route typing through the trusted CDP path
+ * (element.type(), which dispatches real Input.dispatchKeyEvent through the already-attached
+ * chrome.debugger session) rather than falling back to an untrusted JS value assignment
+ * (element.evaluate(el => el.value = ...)).
+ *
+ * <input>, <textarea>, and contentEditable elements are all genuinely typeable via CDP, so
+ * they all take the trusted path as long as they aren't read-only or disabled - those are
+ * the only elements where a real keystroke session cannot type at all, so the untrusted
+ * fallback is used for them (and for any other, non-typeable element).
+ *
+ * Exported as a pure predicate - with no puppeteer/CDP dependency - so it can be unit
+ * tested without standing up a live browser session.
+ */
+export function shouldUseTrustedTyping(props: {
+  tagName: string;
+  isContentEditable: boolean;
+  isReadOnly: boolean;
+  isDisabled: boolean;
+}): boolean {
+  const { tagName, isContentEditable, isReadOnly, isDisabled } = props;
+  const isTypeableTag = tagName === 'input' || tagName === 'textarea';
+  return (isContentEditable || isTypeableTag) && !isReadOnly && !isDisabled;
+}
+
 export function build_initial_state(tabId?: number, url?: string, title?: string): PageState {
   return {
     elementTree: new DOMElementNode({
@@ -1150,8 +1175,13 @@ export default class Page {
         return false;
       });
 
-      // Choose appropriate input method based on element properties
-      if ((isContentEditable || tagName === 'input') && !isReadOnly && !isDisabled) {
+      // Choose appropriate input method based on element properties. <input>, <textarea>,
+      // and contentEditable elements all go through the trusted CDP path (element.type(),
+      // dispatching real Input.dispatchKeyEvent) so strict sites and React handlers that
+      // reject untrusted synthetic events still see the text arrive. The untrusted
+      // evaluate()-based assignment below is a fallback for elements that genuinely can't
+      // be typed into this way (read-only/disabled) or aren't typeable at all.
+      if (shouldUseTrustedTyping({ tagName, isContentEditable, isReadOnly, isDisabled })) {
         // Clear content and set value directly
         await element.evaluate(el => {
           if (el instanceof HTMLElement) {
@@ -1313,8 +1343,17 @@ export default class Page {
         if (error instanceof URLNotAllowedError) {
           throw error;
         }
+        // Distinguish the trusted-click-timed-out case: today this silently substitutes an
+        // untrusted synthetic click(), which is an invisible accuracy cliff (some sites and
+        // React handlers reject synthetic clicks) unless it's logged clearly.
+        if (error instanceof Error && error.message === 'Click timeout') {
+          logger.warning(
+            `Trusted click timed out after 2s on element: ${elementNode}. Falling back to an untrusted synthetic click() - some sites/handlers may silently ignore it.`,
+          );
+        } else {
+          logger.info('Failed to click element, trying again', error);
+        }
         // Second attempt: Use evaluate to perform a direct click
-        logger.info('Failed to click element, trying again', error);
         try {
           await element.evaluate(el => (el as HTMLElement).click());
         } catch (secondError) {

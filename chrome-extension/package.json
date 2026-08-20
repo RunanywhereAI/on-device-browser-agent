@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@extension/i18n": "workspace:*",
+    "@extension/runanywhere": "workspace:*",
     "@extension/shared": "workspace:*",
     "@extension/storage": "workspace:*",
     "@langchain/anthropic": "0.3.33",
