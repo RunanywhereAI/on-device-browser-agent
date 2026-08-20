@@ -33,6 +33,15 @@ export interface ExecutorExtraArgs {
   extractorLLM?: BaseChatModel;
   agentOptions?: Partial<AgentOptions>;
   generalSettings?: GeneralSettingsConfig;
+  /**
+   * Give the Navigator the coordinate action set instead of the index-based one.
+   *
+   * Set when the chosen model is a vision model: it is shown a screenshot and
+   * answers in pixels, so element indices it never saw would be meaningless.
+   * The two sets are mutually exclusive by design — see
+   * `ActionBuilder.buildCoordinateActions`.
+   */
+  useCoordinateActions?: boolean;
 }
 
 export class Executor {
@@ -69,7 +78,9 @@ export class Executor {
     this.plannerPrompt = new PlannerPrompt();
 
     const actionBuilder = new ActionBuilder(context, extractorLLM);
-    const navigatorActionRegistry = new NavigatorActionRegistry(actionBuilder.buildDefaultActions());
+    const navigatorActionRegistry = new NavigatorActionRegistry(
+      extraArgs?.useCoordinateActions ? actionBuilder.buildCoordinateActions() : actionBuilder.buildDefaultActions(),
+    );
 
     // Initialize agents with their respective prompts
     this.navigator = new NavigatorAgent(navigatorActionRegistry, {

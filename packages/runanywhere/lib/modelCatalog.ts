@@ -19,21 +19,38 @@
  * merely "cheaper" — it buys context. Roughly, after ~0.4 GB of runtime, stack
  * and staging overhead:
  *
- *   LFM2.5-2.6B      1.56 GB weights  ->  ~2.0 GB left for KV
- *   Qwen3-4B         2.33 GB weights  ->  ~1.3 GB left for KV
- *   LFM2.5-VL-3B     2.10 GB weights  ->  ~1.5 GB left, minus image tokens
- *   Qwen3-VL-4B      3.11 GB weights  ->  ~0.5 GB left  (too tight to use)
+ *   LFM2.5-2.6B  Q5_K_M   1.94 GB weights  ->  ~1.6 GB left for KV
+ *   LFM2.5-1.2B  Q5_K_M   0.79 GB weights  ->  ~2.8 GB left for KV
+ *   Qwen3-4B     Q4_K_M   2.33 GB weights  ->  ~1.3 GB left for KV
+ *   LFM2.5-VL-3B Q5+Q8    2.52 GB weights  ->  ~1.1 GB left, minus image tokens
  *
- * Three models that look like obvious picks and are not:
+ * WHY Q5_K_M AND NOT Q4, OR A BIGGER MODEL AT Q2
+ * ----------------------------------------------
+ * Under a fixed budget the interesting question is not "how many parameters"
+ * but "how much quality per byte". Q5_K_M costs ~0.27 GB more than Q4_K_M on
+ * the 2.6B and is meaningfully closer to the unquantised model, while still
+ * leaving more KV headroom than a 4B at Q4 would. Going the other way — a 9B
+ * crushed to Q2 — spends the whole budget on weights, destroys quality, and
+ * leaves nothing for context. So: a good quant of a right-sized model.
+ * (Q6_K at 2.22 GB and Liquid's quantisation-aware `QAD-Q4_0` at 1.59 GB are
+ * the quality and max-context ends of the same ladder if this needs tuning.)
+ *
+ * MODELS RULED OUT ON MEASURED EVIDENCE, not on vibes
+ * ---------------------------------------------------
+ *  - **Ornith-1.5-9B** (9.41B, MIT, vision-language). Every published quant is
+ *    too big: the smallest, IQ2_M, is 3.51 GB, and being a VLM it also needs an
+ *    0.86 GB projector — 4.37 GB together, more than the entire address space,
+ *    with nothing left for KV. Q4_K_M is 5.50 GB. Its 35B-A3B sibling is far
+ *    worse. Genuinely interesting model, physically impossible here.
  *  - **Qwen3.6 has no small variant.** Qwen publishes 27B dense and 35B-A3B
  *    only; there is no 9B. Every smaller "Qwen3.6" on the hub is a community
  *    merge at 27B or above.
  *  - **LFM2.5-8B-A1B does not fit**, at 4.80 GB for Q4_K_M. Mixture-of-experts
- *    reduces *compute* to ~1B active parameters but every expert must still be
- *    resident, so it exceeds the entire 4 GiB address space.
+ *    cuts *compute* to ~1B active parameters but every expert stays resident.
  *  - **Fara1.5** is purpose-trained for browser use and would otherwise be
- *    ideal, but the smallest published GGUF is the 9B at ~5.9 GB. Worth
- *    re-checking whether a 4B GGUF has appeared.
+ *    ideal, but its smallest published GGUF is the 9B at ~5.9 GB.
+ *  - **Qwen3-VL-4B** fits only on paper: 3.11 GB leaves ~0.5 GB for KV and
+ *    image tokens, so LFM2.5-VL-3B is the vision choice instead.
  *
  * Every `sizeBytes` below was measured from the live download URL.
  */
@@ -81,9 +98,10 @@ export interface RaModelEntry {
 
 const HF = 'https://huggingface.co';
 
-export const LFM25_2_6B = 'lfm2.5-2.6b-q4_k_m';
-export const LFM25_1_2B = 'lfm2.5-1.2b-q4_k_m';
-export const LFM25_VL_3B = 'lfm2.5-vl-3b-q4_k_m';
+export const LFM25_2_6B = 'lfm2.5-2.6b-q5_k_m';
+export const LFM25_2_6B_Q6 = 'lfm2.5-2.6b-q6_k';
+export const LFM25_1_2B = 'lfm2.5-1.2b-q5_k_m';
+export const LFM25_VL_3B = 'lfm2.5-vl-3b-q5_k_m';
 export const QWEN3_4B = 'qwen3-4b-q4_k_m';
 export const QWEN3_0_6B = 'qwen3-0.6b-q4_k_m';
 
@@ -93,12 +111,12 @@ export const RA_MODEL_CATALOG: readonly RaModelEntry[] = [
     label: 'LFM2.5 2.6B',
     files: [
       {
-        url: `${HF}/LiquidAI/LFM2.5-2.6B-GGUF/resolve/main/LFM2.5-2.6B-Q4_K_M.gguf`,
+        url: `${HF}/LiquidAI/LFM2.5-2.6B-GGUF/resolve/main/LFM2.5-2.6B-Q5_K_M.gguf`,
         role: 'primary',
-        sizeBytes: 1_674_455_040,
+        sizeBytes: 1_939_744_768,
       },
     ],
-    totalBytes: 1_674_455_040,
+    totalBytes: 1_939_744_768,
     contextLength: 32_768,
     nativeContextLength: 131_072,
     vision: false,
@@ -108,8 +126,8 @@ export const RA_MODEL_CATALOG: readonly RaModelEntry[] = [
       'The default, and the best fit for this product by some distance. Liquid post-trained it ' +
       'specifically as an agent (their own card recommends it for "agentic workloads, tool use, ' +
       'data extraction, RAG, and long-context workflows"), it is a hybrid architecture built for ' +
-      'on-device use, and at 1.56 GB it leaves substantially more of the 4 GiB budget for KV cache ' +
-      'than a 4B would — which is what actually determines how long a task can run. The SDK also ' +
+      'on-device use, and at 1.94 GB (Q5_K_M) it leaves substantially more of the 4 GiB budget for KV ' +
+      'cache than a 4B would — which is what actually determines how long a task can run. The SDK also ' +
       'ships a dedicated LFM2 tool-call parser, so its tool output is understood natively rather ' +
       'than by a generic fallback. Its card notes it is weaker at coding and knowledge-heavy ' +
       'tasks; neither is what browser automation asks of it.',
@@ -140,19 +158,19 @@ export const RA_MODEL_CATALOG: readonly RaModelEntry[] = [
     label: 'LFM2.5 1.2B',
     files: [
       {
-        url: `${HF}/LiquidAI/LFM2.5-1.2B-Instruct-GGUF/resolve/main/LFM2.5-1.2B-Instruct-Q4_K_M.gguf`,
+        url: `${HF}/LiquidAI/LFM2.5-1.2B-Instruct-GGUF/resolve/main/LFM2.5-1.2B-Instruct-Q5_K_M.gguf`,
         role: 'primary',
-        sizeBytes: 730_895_168,
+        sizeBytes: 843_354_944,
       },
     ],
-    totalBytes: 730_895_168,
+    totalBytes: 843_354_944,
     contextLength: 32_768,
     nativeContextLength: 131_072,
     vision: false,
     role: 'both',
     minDeviceMemoryGb: 4,
     notes:
-      'The fast-start option: 0.68 GB, so the first task can begin in well under a minute, and ' +
+      'The fast-start option: 0.79 GB, so the first task can begin in well under a minute, and ' +
       'the same agentic post-training and tool-call format as its larger sibling.',
   },
   {
@@ -181,9 +199,9 @@ export const RA_MODEL_CATALOG: readonly RaModelEntry[] = [
     label: 'LFM2.5-VL 3B (vision)',
     files: [
       {
-        url: `${HF}/LiquidAI/LFM2.5-VL-3B-GGUF/resolve/main/LFM2.5-VL-3B-Q4_K_M.gguf`,
+        url: `${HF}/LiquidAI/LFM2.5-VL-3B-GGUF/resolve/main/LFM2.5-VL-3B-Q5_K_M.gguf`,
         role: 'primary',
-        sizeBytes: 1_674_454_240,
+        sizeBytes: 1_939_743_968,
       },
       {
         url: `${HF}/LiquidAI/LFM2.5-VL-3B-GGUF/resolve/main/mmproj-LFM2.5-VL-3B-Q8_0.gguf`,
@@ -191,7 +209,7 @@ export const RA_MODEL_CATALOG: readonly RaModelEntry[] = [
         sizeBytes: 583_109_120,
       },
     ],
-    totalBytes: 1_674_454_240 + 583_109_120,
+    totalBytes: 1_939_743_968 + 583_109_120,
     contextLength: 16_384,
     nativeContextLength: 131_072,
     vision: true,
@@ -200,7 +218,7 @@ export const RA_MODEL_CATALOG: readonly RaModelEntry[] = [
     experimental: true,
     notes:
       'Screenshot-driven control, for pages the DOM path cannot read (canvas apps, obfuscated ' +
-      'widgets). At 2.10 GB including the projector it actually leaves usable KV headroom, unlike ' +
+      'widgets). At 2.52 GB including the projector it still leaves usable KV headroom, unlike ' +
       'Qwen3-VL-4B at 3.11 GB which does not. Still gated behind a measured comparison against ' +
       'the DOM path on real hardware before it is offered by default.',
   },

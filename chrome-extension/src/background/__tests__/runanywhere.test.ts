@@ -7,6 +7,8 @@ import {
   findModel,
   formatBytes,
   imageToViewport,
+  LFM25_1_2B,
+  LFM25_2_6B,
   normalizedToViewport,
   RA_MODEL_CATALOG,
   selectableModels,
@@ -145,7 +147,7 @@ describe('model catalog', () => {
   });
 
   it('resolves ids that exist and rejects ones that do not', () => {
-    expect(findModel('lfm2.5-2.6b-q4_k_m')?.label).toBe('LFM2.5 2.6B');
+    expect(findModel(LFM25_2_6B)?.label).toBe('LFM2.5 2.6B');
     expect(findModel('definitely-not-a-model')).toBeUndefined();
   });
 });
@@ -153,18 +155,19 @@ describe('model catalog', () => {
 describe('automatic model selection', () => {
   it('prefers the agentic default on a mainstream machine', () => {
     const choice = chooseModel(caps({ deviceMemoryGb: 8 }));
-    expect(choice.model.id).toBe('lfm2.5-2.6b-q4_k_m');
+    expect(choice.model.id).toBe(LFM25_2_6B);
     expect(choice.constrained).toBe(false);
   });
 
   it('does not upgrade to a bigger model just because there is more RAM', () => {
     // More weights would come straight out of the KV budget, which is what
     // limits how long an agentic task can run.
-    expect(chooseModel(caps({ deviceMemoryGb: 64 })).model.id).toBe('lfm2.5-2.6b-q4_k_m');
+    expect(chooseModel(caps({ deviceMemoryGb: 64 })).model.id).toBe(LFM25_2_6B);
   });
 
   it('drops to a smaller model on a constrained machine and says so', () => {
     const choice = chooseModel(caps({ deviceMemoryGb: 4 }));
+    expect(choice.model.id).toBe(LFM25_1_2B);
     expect(choice.model.totalBytes).toBeLessThan(1024 ** 3);
     expect(choice.constrained).toBe(true);
   });
@@ -179,8 +182,8 @@ describe('automatic model selection', () => {
   it('assumes a mainstream laptop when the browser reports nothing', () => {
     // navigator.deviceMemory is absent in several browsers; that must not be
     // read as "this device is tiny".
-    expect(chooseModel(null).model.id).toBe('lfm2.5-2.6b-q4_k_m');
-    expect(chooseModel(caps({ deviceMemoryGb: undefined })).model.id).toBe('lfm2.5-2.6b-q4_k_m');
+    expect(chooseModel(null).model.id).toBe(LFM25_2_6B);
+    expect(chooseModel(caps({ deviceMemoryGb: undefined })).model.id).toBe(LFM25_2_6B);
   });
 
   it('mentions the GPU only when there is one', () => {
@@ -193,8 +196,8 @@ describe('automatic model selection', () => {
 
 describe('size formatting', () => {
   it('reads the way a download dialog should', () => {
-    expect(formatBytes(1_674_455_040)).toBe('1.6 GB');
-    expect(formatBytes(730_895_168)).toBe('697 MB');
+    expect(formatBytes(1_939_744_768)).toBe('1.8 GB');
+    expect(formatBytes(843_354_944)).toBe('804 MB');
     expect(formatBytes(4096)).toBe('4 KB');
   });
 });

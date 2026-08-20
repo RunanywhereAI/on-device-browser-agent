@@ -12,7 +12,7 @@
  * page; that work stays in the service worker.
  */
 
-import { InferenceFramework, ModelCategory, ModelFormat, RunAnywhere } from '@runanywhere/web';
+import { ImageInput, InferenceFramework, ModelCategory, ModelFormat, RunAnywhere } from '@runanywhere/web';
 import { LlamaCPP } from '@runanywhere/web-llamacpp';
 import {
   RA_MODEL_CATALOG,
@@ -264,6 +264,12 @@ export async function generate(
 
     const prompt = messages.map(message => ({ role: message.role, content: message.content }));
 
+    // Vision: if any turn carries a screenshot, this has to go through the VLM
+    // entry point rather than the text one — a base64 image inlined into a text
+    // prompt is just a very expensive string. Only the newest image is used;
+    // the adapter has already dropped the older ones.
+    const image = messages.flatMap(message => message.images ?? []).at(-1);
+
     const generationOptions: Record<string, unknown> = {
       model: options.model,
       maxOutputTokens: options.maxOutputTokens,
@@ -294,6 +300,30 @@ export async function generate(
       accumulated = structured.raw ?? JSON.stringify(structured.value ?? {});
       emit({ kind: 'delta', requestId, text: accumulated });
       result = { text: accumulated };
+    } else if (image) {
+      const visionPrompt = prompt.map(turn => `${turn.role}: ${turn.content}`).join('\n\n');
+      const events = RunAnywhere.vlm.generateStream(
+        ImageInput.base64(image.base64, image.mediaType),
+        visionPrompt,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        generationOptions as any,
+      );
+      for await (const event of events) {
+        if (controller.signal.aborted) break;
+        if (event.type === 'textDelta') {
+          accumulated += event.text;
+          emit({ kind: 'delta', requestId, text: event.text });
+        } else if (event.type === 'completed') {
+          result = {
+            text: event.result?.text ?? accumulated,
+            outputTokens: event.result?.outputTokens,
+            tokensPerSecond: event.result?.tokensPerSecond,
+            timeToFirstTokenMs: event.result?.timeToFirstTokenMs,
+          };
+        } else if (event.type === 'failed') {
+          throw new Error(event.error?.message ?? 'Vision generation failed.');
+        }
+      }
     } else {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const events = RunAnywhere.llm.generateStream(prompt as any, generationOptions as any);

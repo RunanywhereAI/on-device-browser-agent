@@ -22,12 +22,16 @@ import {
   nextPageActionSchema,
   scrollToTopActionSchema,
   scrollToBottomActionSchema,
+  clickAtCoordinatesActionSchema,
+  typeAtCoordinatesActionSchema,
+  scrollAtCoordinatesActionSchema,
 } from './schemas';
 import { z } from 'zod';
 import { createLogger } from '@src/background/log';
 import { ExecutionState, Actors } from '../event/types';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { wrapUntrustedContent } from '../messages/utils';
+import { CoordinateError, imageToViewport } from '@extension/runanywhere';
 
 const logger = createLogger('Action');
 
@@ -139,6 +143,17 @@ export function buildDynamicActionSchema(actions: Action[]): z.ZodType {
   }
   return schema;
 }
+
+/**
+ * Actions that address an element by its index in the DOM snapshot. A vision
+ * model never sees those indices, so these are withheld from it.
+ */
+const INDEX_BASED_ACTION_NAMES = new Set([
+  'click_element',
+  'input_text',
+  'get_dropdown_options',
+  'select_dropdown_option',
+]);
 
 export class ActionBuilder {
   private readonly context: AgentContext;
@@ -703,5 +718,82 @@ export class ActionBuilder {
     actions.push(selectDropdownOption);
 
     return actions;
+  }
+
+  /**
+   * The action set for a vision model: coordinates instead of element indices.
+   *
+   * Registered INSTEAD of the index-based actions, not alongside them. A model
+   * shown only a screenshot has no way to know what index 12 refers to, and
+   * offering both encourages it to invent one.
+   *
+   * Navigation, tabs, scrolling-by-page and `done` are shared with the DOM
+   * action set — those never needed an element reference in the first place, so
+   * there is no reason to make a vision model do them by pixel.
+   */
+  buildCoordinateActions() {
+    const shared = this.buildDefaultActions().filter(action => !INDEX_BASED_ACTION_NAMES.has(action.name()));
+
+    const mapPoint = async (x: number, y: number) => {
+      const page = await this.context.browserContext.getCurrentPage();
+      const viewport = await page.getViewportInfo();
+      // The model answers in the coordinate space of the image it was shown,
+      // which on any retina display is larger than the CSS viewport that CDP
+      // input events use. Page owns that conversion so there is exactly one
+      // definition of "what the model saw".
+      const shown = await page.getShownImageSize();
+      const point = imageToViewport({ x, y }, shown, viewport);
+      return { page, x: point.x, y: point.y };
+    };
+
+    const clickAt = new Action(async (input: { intent?: string; x: number; y: number }) => {
+      const intent = input.intent || `Click at (${input.x}, ${input.y})`;
+      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
+      try {
+        const { page, x, y } = await mapPoint(input.x, input.y);
+        await page.clickAtCoordinates(x, y);
+        const msg = `Clicked at (${Math.round(x)}, ${Math.round(y)})`;
+        this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, msg);
+        return new ActionResult({ extractedContent: msg, includeInMemory: true });
+      } catch (error) {
+        const msg = error instanceof CoordinateError ? `Coordinate rejected: ${error.message}` : `${error}`;
+        this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, msg);
+        return new ActionResult({ error: msg, includeInMemory: true });
+      }
+    }, clickAtCoordinatesActionSchema);
+
+    const typeAt = new Action(async (input: { intent?: string; x: number; y: number; text: string }) => {
+      const intent = input.intent || `Type into the field at (${input.x}, ${input.y})`;
+      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
+      try {
+        const { page, x, y } = await mapPoint(input.x, input.y);
+        await page.typeAtCoordinates(x, y, input.text);
+        const msg = `Typed into the field at (${Math.round(x)}, ${Math.round(y)})`;
+        this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, msg);
+        return new ActionResult({ extractedContent: msg, includeInMemory: true });
+      } catch (error) {
+        const msg = error instanceof CoordinateError ? `Coordinate rejected: ${error.message}` : `${error}`;
+        this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, msg);
+        return new ActionResult({ error: msg, includeInMemory: true });
+      }
+    }, typeAtCoordinatesActionSchema);
+
+    const scrollAt = new Action(async (input: { intent?: string; x: number; y: number; amount: number }) => {
+      const intent = input.intent || `Scroll at (${input.x}, ${input.y})`;
+      this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_START, intent);
+      try {
+        const { page, x, y } = await mapPoint(input.x, input.y);
+        await page.scrollAtCoordinates(x, y, input.amount);
+        const msg = `Scrolled ${input.amount > 0 ? 'down' : 'up'} at (${Math.round(x)}, ${Math.round(y)})`;
+        this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_OK, msg);
+        return new ActionResult({ extractedContent: msg, includeInMemory: true });
+      } catch (error) {
+        const msg = `${error}`;
+        this.context.emitEvent(Actors.NAVIGATOR, ExecutionState.ACT_FAIL, msg);
+        return new ActionResult({ error: msg, includeInMemory: true });
+      }
+    }, scrollAtCoordinatesActionSchema);
+
+    return [...shared, clickAt, typeAt, scrollAt];
   }
 }

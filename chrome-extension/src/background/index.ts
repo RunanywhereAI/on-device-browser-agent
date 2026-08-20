@@ -18,7 +18,7 @@ import { DEFAULT_AGENT_OPTIONS } from './agent/types';
 import { SpeechToTextService } from './services/speechToText';
 import { injectBuildDomTreeScripts } from './browser/dom/service';
 import { analytics } from './services/analytics';
-import { registerOffscreenPortListener } from '@extension/runanywhere';
+import { findModel, registerOffscreenPortListener } from '@extension/runanywhere';
 
 const logger = createLogger('background');
 
@@ -337,6 +337,11 @@ async function setupExecutor(taskId: string, task: string, browserContext: Brows
       planningInterval: generalSettings.planningInterval,
     },
     generalSettings: generalSettings,
+    // A vision model is shown a screenshot and answers in pixels, so it gets
+    // the coordinate action set rather than the index-based one. Looked up from
+    // the on-device catalog; a cloud model is never a vision model here, so this
+    // is simply false for those.
+    useCoordinateActions: findModel(navigatorModel.modelName)?.vision === true && generalSettings.useVision,
   });
 
   return executor;

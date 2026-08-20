@@ -43,6 +43,31 @@ export const RA_OFFSCREEN_PATH = 'offscreen/index.html';
 export interface RaChatMessage {
   readonly role: 'system' | 'user' | 'assistant';
   readonly content: string;
+  /**
+   * Images on this turn, if any. Present only on the latest user turn in
+   * practice: re-sending every historical screenshot would exhaust the context
+   * within a few steps, which is the same reason the SDK's own long-session
+   * handling strips older images first.
+   */
+  readonly images?: readonly RaImage[];
+}
+
+/**
+ * An image attached to a turn.
+ *
+ * Carried as base64 because that is what `chrome.tabs.captureVisibleTab`
+ * returns and what the SDK's `ImageInput.base64()` accepts, so no re-encoding
+ * happens on the way through. Screenshots are downscaled BEFORE they get here —
+ * a full-resolution retina capture would blow a small model's image-token
+ * budget, and it must be the same size the coordinate maths is told about.
+ */
+export interface RaImage {
+  /** Base64 payload, with or without a `data:` prefix. */
+  readonly base64: string;
+  readonly mediaType: 'image/png' | 'image/jpeg';
+  /** Pixel dimensions of what the model is actually shown. */
+  readonly width: number;
+  readonly height: number;
 }
 
 /** Generation knobs we actually forward. */

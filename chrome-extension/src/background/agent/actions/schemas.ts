@@ -213,3 +213,50 @@ export const waitActionSchema: ActionSchema = {
     seconds: z.number().int().default(3).describe('amount of seconds'),
   }),
 };
+
+/* -------------------------------------------------------------------------- */
+/* Coordinate actions (vision mode)                                            */
+/* -------------------------------------------------------------------------- */
+/**
+ * A screenshot-driven model has no element index to target — it saw pixels, so
+ * it answers in pixels. These are registered INSTEAD of the index-based
+ * click/input actions when a vision model is selected, never alongside them:
+ * offering both invites the model to mix the two and target an element index it
+ * never actually saw.
+ *
+ * Coordinates are in the space of the image the model was shown, which is not
+ * the viewport (screenshots are downscaled to fit an image-token budget, and a
+ * retina capture is larger than its CSS viewport besides). The handler maps
+ * them via `imageToViewport` before dispatching.
+ */
+export const clickAtCoordinatesActionSchema: ActionSchema = {
+  name: 'click_at',
+  description: 'Click a point in the screenshot you were shown. Use the coordinates of the element centre.',
+  schema: z.object({
+    intent: z.string().default('').describe('purpose of this action'),
+    x: z.number().describe('horizontal pixel position in the screenshot'),
+    y: z.number().describe('vertical pixel position in the screenshot'),
+  }),
+};
+
+export const typeAtCoordinatesActionSchema: ActionSchema = {
+  name: 'type_at',
+  description: 'Click a point in the screenshot to focus a field, then type text into it.',
+  schema: z.object({
+    intent: z.string().default('').describe('purpose of this action'),
+    x: z.number().describe('horizontal pixel position in the screenshot'),
+    y: z.number().describe('vertical pixel position in the screenshot'),
+    text: z.string().describe('text to type'),
+  }),
+};
+
+export const scrollAtCoordinatesActionSchema: ActionSchema = {
+  name: 'scroll_at',
+  description: 'Scroll the content under a point in the screenshot. Positive amount scrolls down.',
+  schema: z.object({
+    intent: z.string().default('').describe('purpose of this action'),
+    x: z.number().describe('horizontal pixel position in the screenshot'),
+    y: z.number().describe('vertical pixel position in the screenshot'),
+    amount: z.number().describe('pixels to scroll; positive is down, negative is up'),
+  }),
+};

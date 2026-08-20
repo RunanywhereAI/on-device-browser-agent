@@ -16,7 +16,7 @@ import type { BaseLanguageModelInput } from '@langchain/core/language_models/bas
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import { generateStream } from './bridgeClient';
-import type { RaChatMessage, RaGenerateOptions } from './protocol';
+import type { RaChatMessage, RaGenerateOptions, RaImage } from './protocol';
 
 export interface ChatRunAnywhereFields extends BaseChatModelParams {
   /** Catalog id, e.g. 'qwen3-4b-q4_k_m'. */
@@ -26,42 +26,93 @@ export interface ChatRunAnywhereFields extends BaseChatModelParams {
   readonly topP?: number;
 }
 
-/** Flatten LangChain's possibly-multimodal content down to text. */
-function contentToText(content: BaseMessage['content']): string {
-  if (typeof content === 'string') return content;
-  if (!Array.isArray(content)) return '';
-  const parts: string[] = [];
+/**
+ * Split LangChain's possibly-multimodal content into text and images.
+ *
+ * LangChain represents an image as `{type:'image_url', image_url:{url}}` where
+ * the url is normally a `data:` URI. We keep those rather than discarding them,
+ * so a vision model genuinely receives the screenshot; a text-only model never
+ * has images attached in the first place, because the caller decides whether to
+ * capture one.
+ */
+function splitContent(content: BaseMessage['content']): { text: string; images: RaImage[] } {
+  if (typeof content === 'string') return { text: content, images: [] };
+  if (!Array.isArray(content)) return { text: '', images: [] };
+
+  const texts: string[] = [];
+  const images: RaImage[] = [];
+
   for (const part of content) {
     if (typeof part === 'string') {
-      parts.push(part);
+      texts.push(part);
       continue;
     }
-    if (part && typeof part === 'object' && 'type' in part) {
-      // Images are dropped rather than stringified. The DOM/text path does not
-      // need them, and a base64 image inlined into a prompt would silently
-      // blow the context window of a small local model. The vision path sends
-      // images through a separate request shape instead.
-      if (part.type === 'text' && 'text' in part && typeof part.text === 'string') {
-        parts.push(part.text);
-      }
+    if (!part || typeof part !== 'object' || !('type' in part)) continue;
+
+    if (part.type === 'text' && 'text' in part && typeof part.text === 'string') {
+      texts.push(part.text);
+      continue;
+    }
+
+    if (part.type === 'image_url' && 'image_url' in part) {
+      const raw = part.image_url as string | { url?: string } | undefined;
+      const url = typeof raw === 'string' ? raw : raw?.url;
+      if (!url) continue;
+      const parsed = parseDataUrl(url);
+      if (parsed) images.push(parsed);
     }
   }
-  return parts.join('\n');
+
+  return { text: texts.join('\n'), images };
+}
+
+/**
+ * Pull a base64 image out of a `data:` URI.
+ *
+ * Dimensions are unknown at this layer — only the capturing side knows what it
+ * resized to — so they are reported as 0 and must be supplied by the caller
+ * when coordinates matter. Encoding a guess here would be worse than admitting
+ * ignorance, because the coordinate maths would silently scale against it.
+ */
+function parseDataUrl(url: string): RaImage | null {
+  // [\s\S] rather than the `s` (dotAll) flag: this package compiles without an
+  // explicit tsconfig `target`, which defaults below ES2018 where that flag is
+  // a compile error. Base64 has no newlines in practice, but a data URI can be
+  // wrapped, so the payload must be matched across lines either way.
+  const match = /^data:(image\/(?:png|jpeg));base64,([\s\S]*)$/.exec(url);
+  if (!match) return null;
+  return {
+    base64: match[2],
+    mediaType: match[1] as RaImage['mediaType'],
+    width: 0,
+    height: 0,
+  };
 }
 
 function toRaMessages(messages: BaseMessage[]): RaChatMessage[] {
-  return messages.map(message => {
-    const text = contentToText(message.content);
-    switch (message._getType()) {
-      case 'system':
-        return { role: 'system', content: text } as const;
-      case 'ai':
-        return { role: 'assistant', content: text } as const;
-      // A tool/function result is, to a model without a native tool channel,
-      // just more context from the environment.
-      default:
-        return { role: 'user', content: text } as const;
+  const converted = messages.map(message => {
+    const { text, images } = splitContent(message.content);
+    const role =
+      message._getType() === 'system'
+        ? ('system' as const)
+        : message._getType() === 'ai'
+          ? ('assistant' as const)
+          : // A tool/function result is, to a model without a native tool
+            // channel, just more context from the environment.
+            ('user' as const);
+    return { role, content: text, images };
+  });
+
+  // Keep images only on the most recent turn that has any. Re-sending every
+  // historical screenshot would exhaust a small model's context within a few
+  // steps, and the older ones are never what the next action depends on.
+  const lastWithImages = converted.reduce((last, message, index) => (message.images.length > 0 ? index : last), -1);
+
+  return converted.map((message, index) => {
+    if (index === lastWithImages && message.images.length > 0) {
+      return { role: message.role, content: message.content, images: message.images };
     }
+    return { role: message.role, content: message.content };
   });
 }
 

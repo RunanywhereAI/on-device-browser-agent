@@ -1312,6 +1312,100 @@ export default class Page {
     }
   }
 
+  /**
+   * Report the live viewport in CSS pixels, plus its device-pixel ratio.
+   *
+   * A vision model is shown a screenshot, which on a retina display is
+   * `devicePixelRatio` times larger than the CSS viewport it depicts. CDP input
+   * events are in CSS pixels, so this is the frame of reference a model's
+   * coordinates must be mapped into — see `imageToViewport` in
+   * `@extension/runanywhere`.
+   */
+  async getViewportInfo(): Promise<{ widthCss: number; heightCss: number; devicePixelRatio: number }> {
+    if (!this._puppeteerPage) throw new Error('Page is not attached');
+    const info = await this._puppeteerPage.evaluate(`(() => ({
+      widthCss: window.visualViewport?.width || window.innerWidth,
+      heightCss: window.visualViewport?.height || window.innerHeight,
+      devicePixelRatio: window.devicePixelRatio || 1,
+    }))()`);
+    return info as { widthCss: number; heightCss: number; devicePixelRatio: number };
+  }
+
+  /**
+   * The pixel dimensions of the screenshot the model is actually shown.
+   *
+   * This is the ONE place that knows the answer, and the coordinate mapping
+   * depends on it being right. `takeScreenshot()` currently captures the
+   * viewport at native resolution with no downscaling, and CDP
+   * `Page.captureScreenshot` renders at the device-pixel ratio — so the image is
+   * the CSS viewport multiplied by `devicePixelRatio`.
+   *
+   * If a downscale-to-fit-token-budget step is ever added to
+   * `takeScreenshot()`, it must be reflected here in the same change, or every
+   * click will be scaled against the wrong reference and land in the wrong
+   * place.
+   */
+  async getShownImageSize(): Promise<{ width: number; height: number }> {
+    const { widthCss, heightCss, devicePixelRatio } = await this.getViewportInfo();
+    return {
+      width: Math.round(widthCss * devicePixelRatio),
+      height: Math.round(heightCss * devicePixelRatio),
+    };
+  }
+
+  /**
+   * Click at a point in the page's CSS-pixel space.
+   *
+   * Goes through Puppeteer's mouse, which dispatches CDP
+   * `Input.dispatchMouseEvent` over the debugger session already attached to
+   * this tab. That matters: these are trusted events, indistinguishable from a
+   * real click, where a synthetic `element.click()` is `isTrusted: false` and is
+   * rejected by strict sites, native `<select>` menus and file pickers.
+   *
+   * Coordinates must already be in viewport space. This method deliberately
+   * does no rescaling — doing it here as well as in the caller is how you get a
+   * factor-of-two bug on retina displays.
+   */
+  async clickAtCoordinates(x: number, y: number): Promise<void> {
+    if (!this._puppeteerPage) throw new Error('Page is not attached');
+    const { widthCss, heightCss } = await this.getViewportInfo();
+    if (x < 0 || y < 0 || x > widthCss || y > heightCss) {
+      throw new Error(
+        `Refusing to click outside the viewport: (${Math.round(x)}, ${Math.round(y)}) ` +
+          `is not inside ${Math.round(widthCss)}x${Math.round(heightCss)}.`,
+      );
+    }
+    logger.info(`Clicking at (${Math.round(x)}, ${Math.round(y)})`);
+    await this._puppeteerPage.mouse.click(x, y);
+    await this._checkAndHandleNavigation();
+  }
+
+  /**
+   * Click a point, then type into whatever took focus.
+   *
+   * A vision model has no element handle to target, so focus is established by
+   * clicking first. Typing then uses the trusted keyboard path for the same
+   * reason as `clickAtCoordinates`.
+   */
+  async typeAtCoordinates(x: number, y: number, text: string): Promise<void> {
+    if (!this._puppeteerPage) throw new Error('Page is not attached');
+    await this.clickAtCoordinates(x, y);
+    // Clear an existing value the way a person would, rather than assigning to
+    // `.value`, which would be an untrusted mutation many frameworks ignore.
+    await this._puppeteerPage.keyboard.down('Control');
+    await this._puppeteerPage.keyboard.press('KeyA');
+    await this._puppeteerPage.keyboard.up('Control');
+    await this._puppeteerPage.keyboard.press('Delete');
+    await this._puppeteerPage.keyboard.type(text, { delay: 50 });
+  }
+
+  /** Scroll the point under the cursor, so the correct scroll container moves. */
+  async scrollAtCoordinates(x: number, y: number, deltaY: number): Promise<void> {
+    if (!this._puppeteerPage) throw new Error('Page is not attached');
+    await this._puppeteerPage.mouse.move(x, y);
+    await this._puppeteerPage.mouse.wheel({ deltaY });
+  }
+
   async clickElementNode(useVision: boolean, elementNode: DOMElementNode): Promise<void> {
     if (!this._puppeteerPage) {
       throw new Error('Puppeteer is not connected');
