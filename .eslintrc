@@ -27,6 +27,14 @@
     "react": {
       "version": "detect",
     },
+    // Point the Tailwind plugin at each workspace's own config. Without this it
+    // validates against stock Tailwind, so every class from our `--ra-*` theme
+    // bridge (text-foreground, ring-brand, bg-surface...) is reported as "not a
+    // Tailwind CSS class". Those are real, generated classes; the warnings were
+    // false and would have masked genuine ones.
+    "tailwindcss": {
+      "config": "tailwind.config.ts",
+    },
   },
   "rules": {
     "react/react-in-jsx-scope": "off",

@@ -1,9 +1,11 @@
-import type { Message } from '@extension/storage';
-import { ACTOR_PROFILES } from '../types/message';
 import { memo } from 'react';
+import { ACTOR_PROFILES } from '../types/message';
+import type { UiMessage } from '../types/uiMessage';
+import { StepRow } from './StepRow';
+import { ToolCallRow } from './ToolCallRow';
 
 interface MessageListProps {
-  messages: Message[];
+  messages: UiMessage[];
   isDarkMode?: boolean;
 }
 
@@ -12,7 +14,7 @@ export default memo(function MessageList({ messages, isDarkMode = false }: Messa
     <div className="max-w-full space-y-4">
       {messages.map((message, index) => (
         <MessageBlock
-          key={`${message.actor}-${message.timestamp}-${index}`}
+          key={message.id}
           message={message}
           isSameActor={index > 0 ? messages[index - 1].actor === message.actor : false}
           isDarkMode={isDarkMode}
@@ -23,7 +25,7 @@ export default memo(function MessageList({ messages, isDarkMode = false }: Messa
 });
 
 interface MessageBlockProps {
-  message: Message;
+  message: UiMessage;
   isSameActor: boolean;
   isDarkMode?: boolean;
 }
@@ -34,7 +36,6 @@ function MessageBlock({ message, isSameActor, isDarkMode = false }: MessageBlock
     return <div />;
   }
   const actor = ACTOR_PROFILES[message.actor as keyof typeof ACTOR_PROFILES];
-  const isProgress = message.content === 'Showing progress...';
 
   return (
     <div
@@ -60,18 +61,25 @@ function MessageBlock({ message, isSameActor, isDarkMode = false }: MessageBlock
         )}
 
         <div className="space-y-0.5">
-          <div className={`whitespace-pre-wrap break-words text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-            {isProgress ? (
-              <div className={`h-1 overflow-hidden rounded ${isDarkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>
-                <div className="h-full animate-progress bg-blue-500" />
+          {message.kind === 'text' && (
+            <>
+              <div
+                className={`whitespace-pre-wrap break-words text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                {message.content}
               </div>
-            ) : (
-              message.content
-            )}
-          </div>
-          {!isProgress && (
-            <div className={`text-right text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-300'}`}>
-              {formatTimestamp(message.timestamp)}
+              <div className={`text-right text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-300'}`}>
+                {formatTimestamp(message.timestamp)}
+              </div>
+            </>
+          )}
+          {message.kind === 'step' && (
+            <div className="text-sm">
+              <StepRow message={message} />
+            </div>
+          )}
+          {message.kind === 'toolCall' && (
+            <div className="text-sm">
+              <ToolCallRow message={message} />
             </div>
           )}
         </div>

@@ -959,5 +959,216 @@
         "example": "Option not found"
       }
     }
+  },
+  "chat_generating_a11y": {
+    "message": "生成中"
+  },
+  "chat_step_status_running": {
+    "message": "處理中…"
+  },
+  "chat_step_status_done": {
+    "message": "完成"
+  },
+  "chat_step_status_failed": {
+    "message": "失敗"
+  },
+  "chat_toolCall_status_running": {
+    "message": "執行中"
+  },
+  "chat_toolCall_status_done": {
+    "message": "完成"
+  },
+  "chat_toolCall_status_failed": {
+    "message": "失敗"
+  },
+  "chat_toolCall_arguments": {
+    "message": "參數"
+  },
+  "chat_toolCall_result": {
+    "message": "結果"
+  },
+  "chat_wait_starting": {
+    "message": "開始中…"
+  },
+  "chat_wait_readingPage": {
+    "message": "正在讀取頁面…"
+  },
+  "chat_wait_warmingUp": {
+    "message": "正在準備模型 — 第一次回覆需要較長時間"
+  },
+  "onboarding_title": {
+    "message": "完全在您的裝置上執行"
+  },
+  "onboarding_subtitle": {
+    "message": "這個助理會為您讀取並操作網頁。頁面內容與 AI 模型都只留在這台電腦上，不會傳送到雲端。"
+  },
+  "onboarding_blocked_title": {
+    "message": "無法在此裝置上執行"
+  },
+  "onboarding_blocked_generic": {
+    "message": "這個瀏覽器無法儲存模型檔案，因此無法在這裡使用裝置端模型。"
+  },
+  "onboarding_choice_start_title": {
+    "message": "立即開始"
+  },
+  "onboarding_choice_start_desc": {
+    "message": "約一分鐘內即可就緒"
+  },
+  "onboarding_choice_best_title": {
+    "message": "最佳品質"
+  },
+  "onboarding_choice_best_desc": {
+    "message": "在較困難的網頁上表現更好"
+  },
+  "onboarding_phase_queued": {
+    "message": "開始中…"
+  },
+  "onboarding_phase_transferring": {
+    "message": "下載中"
+  },
+  "onboarding_phase_verifying": {
+    "message": "正在檢查下載內容"
+  },
+  "onboarding_phase_extracting": {
+    "message": "正在解壓縮"
+  },
+  "onboarding_phase_cancelling": {
+    "message": "取消中…"
+  },
+  "onboarding_phase_paused": {
+    "message": "已暫停 — 繼續時會從中斷處接續"
+  },
+  "onboarding_progress_bytes": {
+    "message": "$DONE$ / $TOTAL$",
+    "placeholders": {
+      "done": {
+        "content": "$1",
+        "example": "1.2 GB"
+      },
+      "total": {
+        "content": "$2",
+        "example": "1.9 GB"
+      }
+    }
+  },
+  "onboarding_rate": {
+    "message": "$RATE$/秒",
+    "placeholders": {
+      "rate": {
+        "content": "$1",
+        "example": "12.3 MB"
+      }
+    }
+  },
+  "onboarding_eta_seconds": {
+    "message": "剩餘 $SECONDS$ 秒",
+    "placeholders": {
+      "seconds": {
+        "content": "$1",
+        "example": "42"
+      }
+    }
+  },
+  "onboarding_eta_minutes": {
+    "message": "剩餘 $MINUTES$ 分鐘",
+    "placeholders": {
+      "minutes": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "onboarding_error_quota": {
+    "message": "儲存空間不足，無法完成下載。請騰出一些空間後再試一次 — 已下載的進度會保留。"
+  },
+  "onboarding_error_generic": {
+    "message": "下載中斷：$MESSAGE$",
+    "placeholders": {
+      "message": {
+        "content": "$1",
+        "example": "網路連線中斷"
+      }
+    }
+  },
+  "onboarding_retry": {
+    "message": "重試"
+  },
+  "onboarding_downloading_title": {
+    "message": "正在下載 $MODEL$",
+    "placeholders": {
+      "model": {
+        "content": "$1",
+        "example": "LFM2.5 1.2B"
+      }
+    }
+  },
+  "onboarding_done_title": {
+    "message": "已就緒"
+  },
+  "onboarding_done_subtitle": {
+    "message": "正在開啟聊天…"
+  },
+  "status_model_running": {
+    "message": "正在執行 $MODEL$",
+    "placeholders": {
+      "model": {
+        "content": "$1",
+        "example": "LFM2.5 2.6B"
+      }
+    }
+  },
+  "status_model_chip_a11y": {
+    "message": "模型狀態"
+  },
+  "status_model_fastStartRationale": {
+    "message": "您選擇這個模型是為了更快開始使用。"
+  },
+  "status_sheet_title": {
+    "message": "裝置端模型"
+  },
+  "status_sheet_model": {
+    "message": "模型"
+  },
+  "status_sheet_size": {
+    "message": "大小"
+  },
+  "status_sheet_context": {
+    "message": "情境長度"
+  },
+  "status_sheet_compute": {
+    "message": "執行於"
+  },
+  "status_sheet_compute_gpu": {
+    "message": "GPU"
+  },
+  "status_sheet_compute_cpu": {
+    "message": "CPU"
+  },
+  "status_sheet_advancedLink": {
+    "message": "在設定中更換模型"
+  },
+  "options_ondevice_title": {
+    "message": "裝置端模型"
+  },
+  "options_ondevice_activeModel": {
+    "message": "使用中的模型"
+  },
+  "options_ondevice_advanced": {
+    "message": "進階"
+  },
+  "options_ondevice_switchModel": {
+    "message": "更換模型"
+  },
+  "options_ondevice_downloaded": {
+    "message": "已下載"
+  },
+  "options_ondevice_notDownloaded": {
+    "message": "尚未下載"
+  },
+  "options_ondevice_delete": {
+    "message": "刪除"
+  },
+  "options_ondevice_cloudSection": {
+    "message": "雲端服務供應商"
   }
 }

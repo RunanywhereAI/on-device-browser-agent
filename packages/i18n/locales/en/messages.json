@@ -959,5 +959,216 @@
         "example": "Option not found"
       }
     }
+  },
+  "chat_generating_a11y": {
+    "message": "Generating"
+  },
+  "chat_step_status_running": {
+    "message": "Working…"
+  },
+  "chat_step_status_done": {
+    "message": "Done"
+  },
+  "chat_step_status_failed": {
+    "message": "Failed"
+  },
+  "chat_toolCall_status_running": {
+    "message": "Running"
+  },
+  "chat_toolCall_status_done": {
+    "message": "Done"
+  },
+  "chat_toolCall_status_failed": {
+    "message": "Failed"
+  },
+  "chat_toolCall_arguments": {
+    "message": "Arguments"
+  },
+  "chat_toolCall_result": {
+    "message": "Result"
+  },
+  "chat_wait_starting": {
+    "message": "Starting…"
+  },
+  "chat_wait_readingPage": {
+    "message": "Reading the page…"
+  },
+  "chat_wait_warmingUp": {
+    "message": "Warming up the model — the first reply takes longest"
+  },
+  "onboarding_title": {
+    "message": "Runs entirely on your device"
+  },
+  "onboarding_subtitle": {
+    "message": "This assistant reads and acts on the page for you. Your page content and the AI model both stay on this computer — nothing is sent to the cloud."
+  },
+  "onboarding_blocked_title": {
+    "message": "Can't run on-device here"
+  },
+  "onboarding_blocked_generic": {
+    "message": "This browser can't store model files, so an on-device model can't be used here."
+  },
+  "onboarding_choice_start_title": {
+    "message": "Start now"
+  },
+  "onboarding_choice_start_desc": {
+    "message": "Ready in about a minute"
+  },
+  "onboarding_choice_best_title": {
+    "message": "Best quality"
+  },
+  "onboarding_choice_best_desc": {
+    "message": "Better at harder pages"
+  },
+  "onboarding_phase_queued": {
+    "message": "Starting…"
+  },
+  "onboarding_phase_transferring": {
+    "message": "Downloading"
+  },
+  "onboarding_phase_verifying": {
+    "message": "Checking download"
+  },
+  "onboarding_phase_extracting": {
+    "message": "Unpacking"
+  },
+  "onboarding_phase_cancelling": {
+    "message": "Cancelling…"
+  },
+  "onboarding_phase_paused": {
+    "message": "Paused — resume picks up where it stopped"
+  },
+  "onboarding_progress_bytes": {
+    "message": "$DONE$ of $TOTAL$",
+    "placeholders": {
+      "done": {
+        "content": "$1",
+        "example": "1.2 GB"
+      },
+      "total": {
+        "content": "$2",
+        "example": "1.9 GB"
+      }
+    }
+  },
+  "onboarding_rate": {
+    "message": "$RATE$/s",
+    "placeholders": {
+      "rate": {
+        "content": "$1",
+        "example": "12.3 MB"
+      }
+    }
+  },
+  "onboarding_eta_seconds": {
+    "message": "$SECONDS$s left",
+    "placeholders": {
+      "seconds": {
+        "content": "$1",
+        "example": "42"
+      }
+    }
+  },
+  "onboarding_eta_minutes": {
+    "message": "$MINUTES$ min left",
+    "placeholders": {
+      "minutes": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "onboarding_error_quota": {
+    "message": "Not enough free storage to finish this download. Free up some space, then try again — your progress is kept."
+  },
+  "onboarding_error_generic": {
+    "message": "The download stopped: $MESSAGE$",
+    "placeholders": {
+      "message": {
+        "content": "$1",
+        "example": "Network connection lost"
+      }
+    }
+  },
+  "onboarding_retry": {
+    "message": "Retry"
+  },
+  "onboarding_downloading_title": {
+    "message": "Downloading $MODEL$",
+    "placeholders": {
+      "model": {
+        "content": "$1",
+        "example": "LFM2.5 1.2B"
+      }
+    }
+  },
+  "onboarding_done_title": {
+    "message": "Ready"
+  },
+  "onboarding_done_subtitle": {
+    "message": "Opening chat…"
+  },
+  "status_model_running": {
+    "message": "Running $MODEL$",
+    "placeholders": {
+      "model": {
+        "content": "$1",
+        "example": "LFM2.5 2.6B"
+      }
+    }
+  },
+  "status_model_chip_a11y": {
+    "message": "Model status"
+  },
+  "status_model_fastStartRationale": {
+    "message": "You picked this for a faster start."
+  },
+  "status_sheet_title": {
+    "message": "On-device model"
+  },
+  "status_sheet_model": {
+    "message": "Model"
+  },
+  "status_sheet_size": {
+    "message": "Size"
+  },
+  "status_sheet_context": {
+    "message": "Context length"
+  },
+  "status_sheet_compute": {
+    "message": "Running on"
+  },
+  "status_sheet_compute_gpu": {
+    "message": "GPU"
+  },
+  "status_sheet_compute_cpu": {
+    "message": "CPU"
+  },
+  "status_sheet_advancedLink": {
+    "message": "Change model in settings"
+  },
+  "options_ondevice_title": {
+    "message": "On-device model"
+  },
+  "options_ondevice_activeModel": {
+    "message": "Active model"
+  },
+  "options_ondevice_advanced": {
+    "message": "Advanced"
+  },
+  "options_ondevice_switchModel": {
+    "message": "Switch model"
+  },
+  "options_ondevice_downloaded": {
+    "message": "Downloaded"
+  },
+  "options_ondevice_notDownloaded": {
+    "message": "Not downloaded"
+  },
+  "options_ondevice_delete": {
+    "message": "Delete"
+  },
+  "options_ondevice_cloudSection": {
+    "message": "Cloud providers"
   }
 }

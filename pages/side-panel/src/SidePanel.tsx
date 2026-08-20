@@ -4,14 +4,34 @@ import { RxDiscordLogo } from 'react-icons/rx';
 import { FiSettings } from 'react-icons/fi';
 import { PiPlusBold } from 'react-icons/pi';
 import { GrHistory } from 'react-icons/gr';
-import { type Message, Actors, chatHistoryStore, agentModelStore, generalSettingsStore } from '@extension/storage';
+import {
+  Actors,
+  chatHistoryStore,
+  agentModelStore,
+  generalSettingsStore,
+  llmProviderStore,
+  getDefaultProviderConfig,
+  AgentNameEnum,
+  ProviderTypeEnum,
+} from '@extension/storage';
 import favoritesStorage, { type FavoritePrompt } from '@extension/storage/lib/prompt/favorites';
 import { t } from '@extension/i18n';
+import { getCapabilities, getModelState, type RaCapabilities } from '@extension/runanywhere';
 import MessageList from './components/MessageList';
 import ChatInput from './components/ChatInput';
 import ChatHistoryList from './components/ChatHistoryList';
 import BookmarkList from './components/BookmarkList';
+import { Onboarding } from './components/Onboarding';
+import { ModelStatus } from './components/ModelStatus';
 import { EventType, type AgentEvent, ExecutionState } from './types/event';
+import {
+  type UiMessage,
+  type StepUiMessage,
+  type ToolCallUiMessage,
+  nextUiMessageId,
+  textUiMessage,
+  toStorageMessage,
+} from './types/uiMessage';
 import './SidePanel.css';
 
 // Declare chrome API types
@@ -21,9 +41,14 @@ declare global {
   }
 }
 
+/**
+ * Whether the panel should show the chat UI, the first-run download flow, or
+ * is still figuring out which of those it is.
+ */
+type GateState = 'loading' | 'onboarding' | 'chat';
+
 const SidePanel = () => {
-  const progressMessage = 'Showing progress...';
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<UiMessage[]>([]);
   const [inputEnabled, setInputEnabled] = useState(true);
   const [showStopButton, setShowStopButton] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
@@ -33,7 +58,9 @@ const SidePanel = () => {
   const [isHistoricalSession, setIsHistoricalSession] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [favoritePrompts, setFavoritePrompts] = useState<FavoritePrompt[]>([]);
-  const [hasConfiguredModels, setHasConfiguredModels] = useState<boolean | null>(null); // null = loading, false = no models, true = has models
+  const [gate, setGate] = useState<GateState>('loading');
+  const [capabilities, setCapabilities] = useState<RaCapabilities | null>(null);
+  const [activeModelId, setActiveModelId] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessingSpeech, setIsProcessingSpeech] = useState(false);
   const [isReplaying, setIsReplaying] = useState(false);
@@ -47,6 +74,11 @@ const SidePanel = () => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<number | null>(null);
+  // In-flight Planner/Navigator/Validator "step" row, keyed by actor, and the
+  // currently in-flight Navigator tool call — so STEP_OK/ACT_OK etc. update
+  // the existing row instead of appending a duplicate.
+  const runningStepIdRef = useRef<Partial<Record<Actors, string>>>({});
+  const runningToolCallIdRef = useRef<string | null>(null);
 
   // Check for dark mode preference
   useEffect(() => {
@@ -61,18 +93,41 @@ const SidePanel = () => {
     return () => darkModeMediaQuery.removeEventListener('change', handleChange);
   }, []);
 
-  // Check if models are configured
-  const checkModelConfiguration = useCallback(async () => {
+  // Figure out whether to show the chat UI or the first-run download flow:
+  // a downloaded on-device model, or a configured cloud provider, both mean
+  // there is something to chat with already.
+  const evaluateGate = useCallback(async () => {
+    let nextCapabilities: RaCapabilities | null = null;
+    try {
+      nextCapabilities = await getCapabilities();
+    } catch (error) {
+      console.error('Failed to read on-device capabilities:', error);
+    }
+    setCapabilities(nextCapabilities);
+
+    let downloadedModelId: string | null = null;
+    try {
+      const models = await getModelState();
+      downloadedModelId = models.find(model => model.downloaded)?.id ?? null;
+    } catch (error) {
+      console.error('Failed to read on-device model state:', error);
+    }
+    setActiveModelId(downloadedModelId);
+
+    if (downloadedModelId) {
+      setGate('chat');
+      return;
+    }
+
+    let hasConfiguredAgent = false;
     try {
       const configuredAgents = await agentModelStore.getConfiguredAgents();
-
-      // Check if at least one agent (preferably Navigator) is configured
-      const hasAtLeastOneModel = configuredAgents.length > 0;
-      setHasConfiguredModels(hasAtLeastOneModel);
+      hasConfiguredAgent = configuredAgents.length > 0;
     } catch (error) {
-      console.error('Error checking model configuration:', error);
-      setHasConfiguredModels(false);
+      console.error('Failed to read agent configuration:', error);
     }
+
+    setGate(hasConfiguredAgent ? 'chat' : 'onboarding');
   }, []);
 
   // Load general settings to check if replay is enabled
@@ -86,25 +141,24 @@ const SidePanel = () => {
     }
   }, []);
 
-  // Check model configuration on mount
+  // Check model/gate state on mount
   useEffect(() => {
-    checkModelConfiguration();
+    evaluateGate();
     loadGeneralSettings();
-  }, [checkModelConfiguration, loadGeneralSettings]);
+  }, [evaluateGate, loadGeneralSettings]);
 
-  // Re-check model configuration when the side panel becomes visible again
+  // Re-check when the side panel becomes visible/focused again — the model
+  // may have finished downloading, or been configured, from another surface.
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        // Panel became visible, re-check configuration and settings
-        checkModelConfiguration();
+        evaluateGate();
         loadGeneralSettings();
       }
     };
 
     const handleFocus = () => {
-      // Panel gained focus, re-check configuration and settings
-      checkModelConfiguration();
+      evaluateGate();
       loadGeneralSettings();
     };
 
@@ -115,7 +169,7 @@ const SidePanel = () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleFocus);
     };
-  }, [checkModelConfiguration, loadGeneralSettings]);
+  }, [evaluateGate, loadGeneralSettings]);
 
   useEffect(() => {
     sessionIdRef.current = currentSessionId;
@@ -125,40 +179,48 @@ const SidePanel = () => {
     isReplayingRef.current = isReplaying;
   }, [isReplaying]);
 
-  const appendMessage = useCallback((newMessage: Message, sessionId?: string | null) => {
-    // Don't save progress messages
-    const isProgressMessage = newMessage.content === progressMessage;
-
-    setMessages(prev => {
-      const filteredMessages = prev.filter((msg, idx) => !(msg.content === progressMessage && idx === prev.length - 1));
-      return [...filteredMessages, newMessage];
-    });
-
-    // Use provided sessionId if available, otherwise fall back to sessionIdRef.current
+  /** Persist a plain message to the current session's history, if there is one. */
+  const persistMessage = useCallback((actor: Actors, content: string, timestamp: number, sessionId?: string | null) => {
     const effectiveSessionId = sessionId !== undefined ? sessionId : sessionIdRef.current;
+    if (!effectiveSessionId) return;
+    chatHistoryStore
+      .addMessage(effectiveSessionId, toStorageMessage(actor, content, timestamp))
+      .catch(err => console.error('Failed to save message to history:', err));
+  }, []);
 
-    console.log('sessionId', effectiveSessionId);
+  /** Append a plain chat bubble, and persist it. */
+  const appendTextMessage = useCallback(
+    (actor: Actors, content: string, timestamp: number, sessionId?: string | null) => {
+      setMessages(prev => [...prev, { kind: 'text', id: nextUiMessageId(), actor, content, timestamp }]);
+      persistMessage(actor, content, timestamp, sessionId);
+    },
+    [persistMessage],
+  );
 
-    // Save message to storage if we have a session and it's not a progress message
-    if (effectiveSessionId && !isProgressMessage) {
-      chatHistoryStore
-        .addMessage(effectiveSessionId, newMessage)
-        .catch(err => console.error('Failed to save message to history:', err));
-    }
+  /** Insert or update a step/tool-call row in place, by id. */
+  const upsertUiMessage = useCallback((id: string, build: (prev: UiMessage | undefined) => UiMessage) => {
+    setMessages(prev => {
+      const idx = prev.findIndex(message => message.id === id);
+      if (idx === -1) return [...prev, build(undefined)];
+      const next = prev.slice();
+      next[idx] = build(prev[idx]);
+      return next;
+    });
+  }, []);
+
+  const removeUiMessage = useCallback((id: string) => {
+    setMessages(prev => prev.filter(message => message.id !== id));
   }, []);
 
   const handleTaskState = useCallback(
     (event: AgentEvent) => {
       const { actor, state, timestamp, data } = event;
-      const content = data?.details;
-      let skip = true;
-      let displayProgress = false;
+      const content = data?.details ?? '';
 
       switch (actor) {
-        case Actors.SYSTEM:
+        case Actors.SYSTEM: {
           switch (state) {
             case ExecutionState.TASK_START:
-              // Reset historical session flag when a new task starts
               setIsHistoricalSession(false);
               break;
             case ExecutionState.TASK_OK:
@@ -172,115 +234,180 @@ const SidePanel = () => {
               setInputEnabled(true);
               setShowStopButton(false);
               setIsReplaying(false);
-              skip = false;
+              appendTextMessage(actor, content, timestamp);
               break;
             case ExecutionState.TASK_CANCEL:
               setIsFollowUpMode(false);
               setInputEnabled(true);
               setShowStopButton(false);
               setIsReplaying(false);
-              skip = false;
+              appendTextMessage(actor, content, timestamp);
               break;
             case ExecutionState.TASK_PAUSE:
-              break;
             case ExecutionState.TASK_RESUME:
               break;
             default:
               console.error('Invalid task state', state);
-              return;
           }
           break;
+        }
         case Actors.USER:
           break;
+        // Planner and the legacy Validator both render as a "thinking" step:
+        // an auto-expanding Disclosure with escalating wait copy while
+        // running, collapsing to the real reasoning once it settles.
         case Actors.PLANNER:
+        case Actors.VALIDATOR: {
           switch (state) {
-            case ExecutionState.STEP_START:
-              displayProgress = true;
+            case ExecutionState.STEP_START: {
+              const id = runningStepIdRef.current[actor] ?? nextUiMessageId();
+              runningStepIdRef.current[actor] = id;
+              upsertUiMessage(id, () => ({ kind: 'step', id, actor, status: 'running', text: '', timestamp }));
               break;
+            }
             case ExecutionState.STEP_OK:
-              skip = false;
+            case ExecutionState.STEP_FAIL: {
+              const id = runningStepIdRef.current[actor];
+              delete runningStepIdRef.current[actor];
+              const status = state === ExecutionState.STEP_OK ? 'ok' : 'fail';
+              if (id) {
+                upsertUiMessage(id, prev => ({ ...(prev as StepUiMessage), status, text: content }));
+              } else {
+                const freshId = nextUiMessageId();
+                upsertUiMessage(freshId, () => ({
+                  kind: 'step',
+                  id: freshId,
+                  actor,
+                  status,
+                  text: content,
+                  timestamp,
+                }));
+              }
+              persistMessage(actor, content, timestamp);
               break;
-            case ExecutionState.STEP_FAIL:
-              skip = false;
+            }
+            case ExecutionState.STEP_CANCEL: {
+              const id = runningStepIdRef.current[actor];
+              delete runningStepIdRef.current[actor];
+              if (id) removeUiMessage(id);
               break;
-            case ExecutionState.STEP_CANCEL:
-              break;
+            }
             default:
               console.error('Invalid step state', state);
-              return;
           }
           break;
-        case Actors.NAVIGATOR:
+        }
+        case Actors.NAVIGATOR: {
           switch (state) {
-            case ExecutionState.STEP_START:
-              displayProgress = true;
+            case ExecutionState.STEP_START: {
+              const id = nextUiMessageId();
+              runningStepIdRef.current[actor] = id;
+              upsertUiMessage(id, () => ({ kind: 'step', id, actor, status: 'running', text: '', timestamp }));
               break;
-            case ExecutionState.STEP_OK:
-              displayProgress = false;
+            }
+            case ExecutionState.STEP_OK: {
+              // Superseded by the ACT_* tool-call row(s) below — matches the
+              // previous behaviour of never showing "Navigation done".
+              const id = runningStepIdRef.current[actor];
+              delete runningStepIdRef.current[actor];
+              if (id) removeUiMessage(id);
               break;
-            case ExecutionState.STEP_FAIL:
-              skip = false;
-              displayProgress = false;
-              break;
-            case ExecutionState.STEP_CANCEL:
-              displayProgress = false;
-              break;
-            case ExecutionState.ACT_START:
-              if (content !== 'cache_content') {
-                // skip to display caching content
-                skip = false;
+            }
+            case ExecutionState.STEP_FAIL: {
+              const id = runningStepIdRef.current[actor];
+              delete runningStepIdRef.current[actor];
+              if (id) {
+                upsertUiMessage(id, prev => ({ ...(prev as StepUiMessage), status: 'fail', text: content }));
+              } else {
+                const freshId = nextUiMessageId();
+                upsertUiMessage(freshId, () => ({
+                  kind: 'step',
+                  id: freshId,
+                  actor,
+                  status: 'fail',
+                  text: content,
+                  timestamp,
+                }));
               }
+              persistMessage(actor, content, timestamp);
               break;
-            case ExecutionState.ACT_OK:
-              skip = !isReplayingRef.current;
+            }
+            case ExecutionState.STEP_CANCEL: {
+              const id = runningStepIdRef.current[actor];
+              delete runningStepIdRef.current[actor];
+              if (id) removeUiMessage(id);
               break;
-            case ExecutionState.ACT_FAIL:
-              skip = false;
+            }
+            case ExecutionState.ACT_START: {
+              // The "Navigating..." placeholder is superseded by the tool-call row.
+              const stepId = runningStepIdRef.current[actor];
+              if (stepId) {
+                delete runningStepIdRef.current[actor];
+                removeUiMessage(stepId);
+              }
+              if (content === 'cache_content') break; // suppressed, as before
+              const id = nextUiMessageId();
+              runningToolCallIdRef.current = id;
+              upsertUiMessage(id, () => ({
+                kind: 'toolCall',
+                id,
+                actor,
+                status: 'running',
+                action: content,
+                timestamp,
+              }));
+              persistMessage(actor, content, timestamp);
               break;
+            }
+            case ExecutionState.ACT_OK: {
+              const id = runningToolCallIdRef.current;
+              runningToolCallIdRef.current = null;
+              if (id) {
+                upsertUiMessage(id, prev => ({ ...(prev as ToolCallUiMessage), status: 'ok', result: content }));
+              } else if (isReplayingRef.current) {
+                const freshId = nextUiMessageId();
+                upsertUiMessage(freshId, () => ({
+                  kind: 'toolCall',
+                  id: freshId,
+                  actor,
+                  status: 'ok',
+                  action: content,
+                  timestamp,
+                }));
+              }
+              // Only shown/persisted during replay, matching the previous behaviour.
+              if (isReplayingRef.current) persistMessage(actor, content, timestamp);
+              break;
+            }
+            case ExecutionState.ACT_FAIL: {
+              const id = runningToolCallIdRef.current;
+              runningToolCallIdRef.current = null;
+              if (id) {
+                upsertUiMessage(id, prev => ({ ...(prev as ToolCallUiMessage), status: 'fail', result: content }));
+              } else {
+                const freshId = nextUiMessageId();
+                upsertUiMessage(freshId, () => ({
+                  kind: 'toolCall',
+                  id: freshId,
+                  actor,
+                  status: 'fail',
+                  action: content,
+                  timestamp,
+                }));
+              }
+              persistMessage(actor, content, timestamp);
+              break;
+            }
             default:
               console.error('Invalid action', state);
-              return;
           }
           break;
-        case Actors.VALIDATOR:
-          // Handle legacy validator events from historical messages
-          switch (state) {
-            case ExecutionState.STEP_START:
-              displayProgress = true;
-              break;
-            case ExecutionState.STEP_OK:
-              skip = false;
-              break;
-            case ExecutionState.STEP_FAIL:
-              skip = false;
-              break;
-            default:
-              console.error('Invalid validation', state);
-              return;
-          }
-          break;
+        }
         default:
           console.error('Unknown actor', actor);
-          return;
-      }
-
-      if (!skip) {
-        appendMessage({
-          actor,
-          content: content || '',
-          timestamp: timestamp,
-        });
-      }
-
-      if (displayProgress) {
-        appendMessage({
-          actor,
-          content: progressMessage,
-          timestamp: timestamp,
-        });
       }
     },
-    [appendMessage],
+    [appendTextMessage, persistMessage, upsertUiMessage, removeUiMessage],
   );
 
   // Stop heartbeat and close connection
@@ -312,11 +439,7 @@ const SidePanel = () => {
           handleTaskState(message);
         } else if (message && message.type === 'error') {
           // Handle error messages from service worker
-          appendMessage({
-            actor: Actors.SYSTEM,
-            content: message.error || t('errors_unknown'),
-            timestamp: Date.now(),
-          });
+          appendTextMessage(Actors.SYSTEM, message.error || t('errors_unknown'), Date.now());
           setInputEnabled(true);
           setShowStopButton(false);
         } else if (message && message.type === 'speech_to_text_result') {
@@ -327,11 +450,7 @@ const SidePanel = () => {
           setIsProcessingSpeech(false);
         } else if (message && message.type === 'speech_to_text_error') {
           // Handle speech-to-text error
-          appendMessage({
-            actor: Actors.SYSTEM,
-            content: message.error || t('chat_stt_recognitionFailed'),
-            timestamp: Date.now(),
-          });
+          appendTextMessage(Actors.SYSTEM, message.error || t('chat_stt_recognitionFailed'), Date.now());
           setIsProcessingSpeech(false);
         } else if (message && message.type === 'heartbeat_ack') {
           console.log('Heartbeat acknowledged');
@@ -369,15 +488,11 @@ const SidePanel = () => {
       }, 25000);
     } catch (error) {
       console.error('Failed to establish connection:', error);
-      appendMessage({
-        actor: Actors.SYSTEM,
-        content: t('errors_conn_serviceWorker'),
-        timestamp: Date.now(),
-      });
+      appendTextMessage(Actors.SYSTEM, t('errors_conn_serviceWorker'), Date.now());
       // Clear any references since connection failed
       portRef.current = null;
     }
-  }, [handleTaskState, appendMessage, stopConnection]);
+  }, [handleTaskState, appendTextMessage, stopConnection]);
 
   // Add safety check for message sending
   const sendMessage = useCallback(
@@ -402,22 +517,14 @@ const SidePanel = () => {
     try {
       // Check if replay is enabled in settings
       if (!replayEnabled) {
-        appendMessage({
-          actor: Actors.SYSTEM,
-          content: t('chat_replay_disabled'),
-          timestamp: Date.now(),
-        });
+        appendTextMessage(Actors.SYSTEM, t('chat_replay_disabled'), Date.now());
         return;
       }
 
       // Check if history exists using loadAgentStepHistory
       const historyData = await chatHistoryStore.loadAgentStepHistory(historySessionId);
       if (!historyData) {
-        appendMessage({
-          actor: Actors.SYSTEM,
-          content: t('chat_replay_noHistory', historySessionId.substring(0, 20)),
-          timestamp: Date.now(),
-        });
+        appendTextMessage(Actors.SYSTEM, t('chat_replay_noHistory', historySessionId.substring(0, 20)), Date.now());
         return;
       }
 
@@ -432,6 +539,8 @@ const SidePanel = () => {
       if (isHistoricalSession) {
         setMessages([]);
       }
+      runningStepIdRef.current = {};
+      runningToolCallIdRef.current = null;
 
       // Create a new chat session for this replay task
       const newSession = await chatHistoryStore.createSession(`Replay of ${historySessionId.substring(0, 20)}...`);
@@ -450,14 +559,8 @@ const SidePanel = () => {
       setIsFollowUpMode(false);
       setIsHistoricalSession(false);
 
-      const userMessage = {
-        actor: Actors.USER,
-        content: `/replay ${historySessionId}`,
-        timestamp: Date.now(),
-      };
-
       // Add the user message to the new session
-      appendMessage(userMessage, sessionIdRef.current);
+      appendTextMessage(Actors.USER, `/replay ${historySessionId}`, Date.now(), sessionIdRef.current);
 
       // Setup connection if not exists
       if (!portRef.current) {
@@ -473,19 +576,11 @@ const SidePanel = () => {
         task: historyData.task, // Add the task from history
       });
 
-      appendMessage({
-        actor: Actors.SYSTEM,
-        content: t('chat_replay_starting', historyData.task),
-        timestamp: Date.now(),
-      });
+      appendTextMessage(Actors.SYSTEM, t('chat_replay_starting', historyData.task), Date.now());
       setIsReplaying(true);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
-      appendMessage({
-        actor: Actors.SYSTEM,
-        content: t('chat_replay_failed', errorMessage),
-        timestamp: Date.now(),
-      });
+      appendTextMessage(Actors.SYSTEM, t('chat_replay_failed', errorMessage), Date.now());
     }
   };
 
@@ -517,11 +612,7 @@ const SidePanel = () => {
         // Handle multiple spaces by filtering out empty strings
         const parts = command.split(' ').filter(part => part.trim() !== '');
         if (parts.length !== 2) {
-          appendMessage({
-            actor: Actors.SYSTEM,
-            content: t('chat_replay_invalidArgs'),
-            timestamp: Date.now(),
-          });
+          appendTextMessage(Actors.SYSTEM, t('chat_replay_invalidArgs'), Date.now());
           return true;
         }
 
@@ -531,20 +622,12 @@ const SidePanel = () => {
       }
 
       // Unsupported command
-      appendMessage({
-        actor: Actors.SYSTEM,
-        content: t('errors_cmd_unknown', command),
-        timestamp: Date.now(),
-      });
+      appendTextMessage(Actors.SYSTEM, t('errors_cmd_unknown', command), Date.now());
       return true;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
       console.error('Command error', errorMessage);
-      appendMessage({
-        actor: Actors.SYSTEM,
-        content: errorMessage,
-        timestamp: Date.now(),
-      });
+      appendTextMessage(Actors.SYSTEM, errorMessage, Date.now());
       return true;
     }
   };
@@ -595,14 +678,8 @@ const SidePanel = () => {
         sessionIdRef.current = sessionId;
       }
 
-      const userMessage = {
-        actor: Actors.USER,
-        content: displayText || text, // Use display text for chat UI, full text for background service
-        timestamp: Date.now(),
-      };
-
-      // Pass the sessionId directly to appendMessage
-      appendMessage(userMessage, sessionIdRef.current);
+      // Pass the sessionId directly to appendTextMessage
+      appendTextMessage(Actors.USER, displayText || text, Date.now(), sessionIdRef.current);
 
       // Setup connection if not exists
       if (!portRef.current) {
@@ -632,11 +709,7 @@ const SidePanel = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
       console.error('Task error', errorMessage);
-      appendMessage({
-        actor: Actors.SYSTEM,
-        content: errorMessage,
-        timestamp: Date.now(),
-      });
+      appendTextMessage(Actors.SYSTEM, errorMessage, Date.now());
       setInputEnabled(true);
       setShowStopButton(false);
       stopConnection();
@@ -651,11 +724,7 @@ const SidePanel = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
       console.error('cancel_task error', errorMessage);
-      appendMessage({
-        actor: Actors.SYSTEM,
-        content: errorMessage,
-        timestamp: Date.now(),
-      });
+      appendTextMessage(Actors.SYSTEM, errorMessage, Date.now());
     }
     setInputEnabled(true);
     setShowStopButton(false);
@@ -670,6 +739,8 @@ const SidePanel = () => {
     setShowStopButton(false);
     setIsFollowUpMode(false);
     setIsHistoricalSession(false);
+    runningStepIdRef.current = {};
+    runningToolCallIdRef.current = null;
 
     // Disconnect any existing connection
     stopConnection();
@@ -696,6 +767,8 @@ const SidePanel = () => {
       setMessages([]);
       setIsFollowUpMode(false);
       setIsHistoricalSession(false);
+      runningStepIdRef.current = {};
+      runningToolCallIdRef.current = null;
     }
   };
 
@@ -704,9 +777,11 @@ const SidePanel = () => {
       const fullSession = await chatHistoryStore.getSession(sessionId);
       if (fullSession && fullSession.messages.length > 0) {
         setCurrentSessionId(fullSession.id);
-        setMessages(fullSession.messages);
+        setMessages(fullSession.messages.map(message => textUiMessage(message, message.id)));
         setIsFollowUpMode(false);
         setIsHistoricalSession(true); // Mark this as a historical session
+        runningStepIdRef.current = {};
+        runningToolCallIdRef.current = null;
         console.log('history session selected', sessionId);
       }
       setShowHistory(false);
@@ -835,6 +910,40 @@ const SidePanel = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  /** Called once the model chosen during onboarding has finished downloading. */
+  const handleModelReady = useCallback(async (modelId: string) => {
+    // Wire the on-device provider + agent models so the background executor
+    // can actually route inference to it — the whole point of "no
+    // configuration" is that this happens automatically rather than sending
+    // the user to the options page after a download they just watched finish.
+    try {
+      await llmProviderStore.setProvider(
+        ProviderTypeEnum.RunAnywhere,
+        getDefaultProviderConfig(ProviderTypeEnum.RunAnywhere),
+      );
+    } catch (error) {
+      console.error('Failed to register the on-device provider:', error);
+    }
+    try {
+      if (!(await agentModelStore.hasAgentModel(AgentNameEnum.Navigator))) {
+        await agentModelStore.setAgentModel(AgentNameEnum.Navigator, {
+          provider: ProviderTypeEnum.RunAnywhere,
+          modelName: modelId,
+        });
+      }
+      if (!(await agentModelStore.hasAgentModel(AgentNameEnum.Planner))) {
+        await agentModelStore.setAgentModel(AgentNameEnum.Planner, {
+          provider: ProviderTypeEnum.RunAnywhere,
+          modelName: modelId,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to configure the on-device agent model:', error);
+    }
+    setActiveModelId(modelId);
+    setGate('chat');
+  }, []);
+
   const handleMicClick = async () => {
     if (isRecording) {
       // Stop recording
@@ -855,11 +964,7 @@ const SidePanel = () => {
       const permissionStatus = await navigator.permissions.query({ name: 'microphone' as PermissionName });
 
       if (permissionStatus.state === 'denied') {
-        appendMessage({
-          actor: Actors.SYSTEM,
-          content: t('chat_stt_microphone_permissionDenied'),
-          timestamp: Date.now(),
-        });
+        appendTextMessage(Actors.SYSTEM, t('chat_stt_microphone_permissionDenied'), Date.now());
         return;
       }
 
@@ -949,11 +1054,7 @@ const SidePanel = () => {
               });
             } catch (error) {
               console.error('Failed to send audio for speech-to-text:', error);
-              appendMessage({
-                actor: Actors.SYSTEM,
-                content: t('chat_stt_processingFailed'),
-                timestamp: Date.now(),
-              });
+              appendTextMessage(Actors.SYSTEM, t('chat_stt_processingFailed'), Date.now());
               setIsRecording(false);
               setIsProcessingSpeech(false);
             }
@@ -990,11 +1091,7 @@ const SidePanel = () => {
         }
       }
 
-      appendMessage({
-        actor: Actors.SYSTEM,
-        content: errorMessage,
-        timestamp: Date.now(),
-      });
+      appendTextMessage(Actors.SYSTEM, errorMessage, Date.now());
       setIsRecording(false);
     }
   };
@@ -1017,6 +1114,11 @@ const SidePanel = () => {
               <img src="/icon-128.png" alt="Extension Logo" className="size-6" />
             )}
           </div>
+          {!showHistory && gate === 'chat' && activeModelId && (
+            <div className="flex flex-1 items-center justify-center overflow-hidden px-2">
+              <ModelStatus modelId={activeModelId} capabilities={capabilities} />
+            </div>
+          )}
           <div className="header-icons">
             {!showHistory && (
               <>
@@ -1071,8 +1173,8 @@ const SidePanel = () => {
           </div>
         ) : (
           <>
-            {/* Show loading state while checking model configuration */}
-            {hasConfiguredModels === null && (
+            {/* Still figuring out whether there's a model or provider to chat with */}
+            {gate === 'loading' && (
               <div
                 className={`flex flex-1 items-center justify-center p-8 ${isDarkMode ? 'text-sky-300' : 'text-sky-600'}`}>
                 <div className="text-center">
@@ -1082,46 +1184,11 @@ const SidePanel = () => {
               </div>
             )}
 
-            {/* Show setup message when no models are configured */}
-            {hasConfiguredModels === false && (
-              <div
-                className={`flex flex-1 items-center justify-center p-8 ${isDarkMode ? 'text-sky-300' : 'text-sky-600'}`}>
-                <div className="max-w-md text-center">
-                  <img src="/icon-128.png" alt="RA Browser Use" className="mx-auto mb-4 size-12" />
-                  <h3 className={`mb-2 text-lg font-semibold ${isDarkMode ? 'text-sky-200' : 'text-sky-700'}`}>
-                    {t('welcome_title')}
-                  </h3>
-                  <p className="mb-4">{t('welcome_instruction')}</p>
-                  <button
-                    onClick={() => chrome.runtime.openOptionsPage()}
-                    className={`my-4 rounded-lg px-4 py-2 font-medium transition-colors ${
-                      isDarkMode ? 'bg-sky-600 text-white hover:bg-sky-700' : 'bg-sky-500 text-white hover:bg-sky-600'
-                    }`}>
-                    {t('welcome_openSettings')}
-                  </button>
-                  <div className="mt-4 text-sm opacity-75">
-                    <a
-                      href="https://github.com/RunanywhereAI/on-device-browser-agent#readme"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={`${isDarkMode ? 'text-sky-400 hover:text-sky-300' : 'text-sky-700 hover:text-sky-600'}`}>
-                      {t('welcome_quickStart')}
-                    </a>
-                    <span className="mx-2">•</span>
-                    <a
-                      href="https://discord.gg/NN3ABHggMK"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={`${isDarkMode ? 'text-sky-400 hover:text-sky-300' : 'text-sky-700 hover:text-sky-600'}`}>
-                      {t('welcome_joinCommunity')}
-                    </a>
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* First run: no model downloaded yet, and no cloud provider configured */}
+            {gate === 'onboarding' && <Onboarding capabilities={capabilities} onModelReady={handleModelReady} />}
 
-            {/* Show normal chat interface when models are configured */}
-            {hasConfiguredModels === true && (
+            {/* Normal chat interface: a model is downloaded, or a cloud provider is configured */}
+            {gate === 'chat' && (
               <>
                 {messages.length === 0 && (
                   <>

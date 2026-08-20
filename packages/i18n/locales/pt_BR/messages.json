@@ -959,5 +959,216 @@
         "example": "Opção não encontrada"
       }
     }
+  },
+  "chat_generating_a11y": {
+    "message": "Gerando"
+  },
+  "chat_step_status_running": {
+    "message": "Processando…"
+  },
+  "chat_step_status_done": {
+    "message": "Concluído"
+  },
+  "chat_step_status_failed": {
+    "message": "Falhou"
+  },
+  "chat_toolCall_status_running": {
+    "message": "Em execução"
+  },
+  "chat_toolCall_status_done": {
+    "message": "Concluído"
+  },
+  "chat_toolCall_status_failed": {
+    "message": "Falhou"
+  },
+  "chat_toolCall_arguments": {
+    "message": "Argumentos"
+  },
+  "chat_toolCall_result": {
+    "message": "Resultado"
+  },
+  "chat_wait_starting": {
+    "message": "Iniciando…"
+  },
+  "chat_wait_readingPage": {
+    "message": "Lendo a página…"
+  },
+  "chat_wait_warmingUp": {
+    "message": "Preparando o modelo — a primeira resposta demora mais"
+  },
+  "onboarding_title": {
+    "message": "Funciona totalmente no seu dispositivo"
+  },
+  "onboarding_subtitle": {
+    "message": "Este assistente lê e age na página por você. O conteúdo da página e o modelo de IA permanecem neste computador — nada é enviado para a nuvem."
+  },
+  "onboarding_blocked_title": {
+    "message": "Não é possível executar no dispositivo aqui"
+  },
+  "onboarding_blocked_generic": {
+    "message": "Este navegador não consegue armazenar arquivos de modelo, então um modelo local não pode ser usado aqui."
+  },
+  "onboarding_choice_start_title": {
+    "message": "Começar agora"
+  },
+  "onboarding_choice_start_desc": {
+    "message": "Pronto em cerca de um minuto"
+  },
+  "onboarding_choice_best_title": {
+    "message": "Melhor qualidade"
+  },
+  "onboarding_choice_best_desc": {
+    "message": "Melhor em páginas mais difíceis"
+  },
+  "onboarding_phase_queued": {
+    "message": "Iniciando…"
+  },
+  "onboarding_phase_transferring": {
+    "message": "Baixando"
+  },
+  "onboarding_phase_verifying": {
+    "message": "Verificando download"
+  },
+  "onboarding_phase_extracting": {
+    "message": "Descompactando"
+  },
+  "onboarding_phase_cancelling": {
+    "message": "Cancelando…"
+  },
+  "onboarding_phase_paused": {
+    "message": "Pausado — a retomada continua de onde parou"
+  },
+  "onboarding_progress_bytes": {
+    "message": "$DONE$ de $TOTAL$",
+    "placeholders": {
+      "done": {
+        "content": "$1",
+        "example": "1,2 GB"
+      },
+      "total": {
+        "content": "$2",
+        "example": "1,9 GB"
+      }
+    }
+  },
+  "onboarding_rate": {
+    "message": "$RATE$/s",
+    "placeholders": {
+      "rate": {
+        "content": "$1",
+        "example": "12,3 MB"
+      }
+    }
+  },
+  "onboarding_eta_seconds": {
+    "message": "$SECONDS$s restantes",
+    "placeholders": {
+      "seconds": {
+        "content": "$1",
+        "example": "42"
+      }
+    }
+  },
+  "onboarding_eta_minutes": {
+    "message": "$MINUTES$ min restantes",
+    "placeholders": {
+      "minutes": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "onboarding_error_quota": {
+    "message": "Não há espaço de armazenamento suficiente para concluir este download. Libere espaço e tente novamente — seu progresso foi mantido."
+  },
+  "onboarding_error_generic": {
+    "message": "O download foi interrompido: $MESSAGE$",
+    "placeholders": {
+      "message": {
+        "content": "$1",
+        "example": "Conexão de rede perdida"
+      }
+    }
+  },
+  "onboarding_retry": {
+    "message": "Tentar novamente"
+  },
+  "onboarding_downloading_title": {
+    "message": "Baixando $MODEL$",
+    "placeholders": {
+      "model": {
+        "content": "$1",
+        "example": "LFM2.5 1.2B"
+      }
+    }
+  },
+  "onboarding_done_title": {
+    "message": "Pronto"
+  },
+  "onboarding_done_subtitle": {
+    "message": "Abrindo o chat…"
+  },
+  "status_model_running": {
+    "message": "Executando $MODEL$",
+    "placeholders": {
+      "model": {
+        "content": "$1",
+        "example": "LFM2.5 2.6B"
+      }
+    }
+  },
+  "status_model_chip_a11y": {
+    "message": "Status do modelo"
+  },
+  "status_model_fastStartRationale": {
+    "message": "Você escolheu este modelo para começar mais rápido."
+  },
+  "status_sheet_title": {
+    "message": "Modelo no dispositivo"
+  },
+  "status_sheet_model": {
+    "message": "Modelo"
+  },
+  "status_sheet_size": {
+    "message": "Tamanho"
+  },
+  "status_sheet_context": {
+    "message": "Comprimento de contexto"
+  },
+  "status_sheet_compute": {
+    "message": "Executando em"
+  },
+  "status_sheet_compute_gpu": {
+    "message": "GPU"
+  },
+  "status_sheet_compute_cpu": {
+    "message": "CPU"
+  },
+  "status_sheet_advancedLink": {
+    "message": "Trocar modelo nas configurações"
+  },
+  "options_ondevice_title": {
+    "message": "Modelo no dispositivo"
+  },
+  "options_ondevice_activeModel": {
+    "message": "Modelo ativo"
+  },
+  "options_ondevice_advanced": {
+    "message": "Avançado"
+  },
+  "options_ondevice_switchModel": {
+    "message": "Trocar modelo"
+  },
+  "options_ondevice_downloaded": {
+    "message": "Baixado"
+  },
+  "options_ondevice_notDownloaded": {
+    "message": "Não baixado"
+  },
+  "options_ondevice_delete": {
+    "message": "Excluir"
+  },
+  "options_ondevice_cloudSection": {
+    "message": "Provedores de nuvem"
   }
 }
