@@ -22,7 +22,7 @@
   },
   "dependencies": {
     "@langchain/core": "0.3.79",
-    "zod-to-json-schema": "^3.24.6"
+    "zod-to-json-schema": "^3.25.2"
   },
   "devDependencies": {
     "@extension/tsconfig": "workspace:*"

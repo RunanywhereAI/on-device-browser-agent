@@ -26,12 +26,12 @@
   },
   "devDependencies": {
     "@extension/tsconfig": "workspace:*",
-    "@rollup/plugin-sucrase": "^5.0.2",
+    "@rollup/plugin-sucrase": "^5.1.0",
     "@types/ws": "^8.5.13",
     "esm": "^3.2.25",
     "fast-glob": "^3.3.2",
-    "rollup": "^4.24.0",
+    "rollup": "^4.62.5",
     "ts-node": "^10.9.2",
-    "ws": "8.18.0"
+    "ws": "8.21.3"
   }
 }

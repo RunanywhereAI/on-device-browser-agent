@@ -19,7 +19,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "react-icons": "^5.0.0",
+    "react-icons": "^5.7.0",
     "webextension-polyfill": "^0.12.0",
     "@extension/shared": "workspace:*",
     "@extension/storage": "workspace:*",
