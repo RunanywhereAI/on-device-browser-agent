@@ -31,7 +31,7 @@
     "@langchain/xai": "^0.1.0",
     "jsonrepair": "^3.13.1",
     "posthog-js": "^1.271.0",
-    "puppeteer-core": "^24.31.0",
+    "puppeteer-core": "^25.8.0",
     "webextension-polyfill": "^0.12.0",
     "zod": "^3.25.76",
     "zod-to-json-schema": "^3.24.6"
