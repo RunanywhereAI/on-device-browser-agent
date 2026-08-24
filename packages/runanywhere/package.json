@@ -21,7 +21,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@langchain/core": "0.3.79",
+    "@langchain/core": "1.2.9",
     "zod-to-json-schema": "^3.24.6"
   },
   "devDependencies": {
